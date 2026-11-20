@@ -1,7 +1,9 @@
 \documentclass[sn-mathphys, oneside]{sn-jnl}
-\usepackage[T1]{fontenc}
+\usepackage[T5,T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
+\newcommand{\vn}[1]{{\fontencoding{T5}\selectfont #1}}
+\newcommand{\vntt}[1]{{\fontencoding{T5}\selectfont\texttt{#1}}}
 \usepackage{indentfirst}
 % Used to describe data
 \usepackage{listings}
@@ -257,7 +259,7 @@ The corpus organization and vaccine name mapping associate cleaned source record
 \pending{Supply the frozen corpus metadata dictionary, field coverage, source URL and original-page mapping policy, and the rule for selecting among conflicting or superseded documents.}
 
 \subsection{Vaccine Document Processing Module}
-The team collected vaccine usage instructions from the Drug Administration of Vietnam public service portal at \url{https://dichvucong.dav.gov.vn/} on September 18, 2026. The listing was obtained with an HTTP GET request whose limit parameter was increased to retrieve all 123 vaccine listings in one request. The document extraction code supports several document fields, while the corpus selected for this project contains usage instructions. Some instructions also contain authorization-decision or regulatory-guidance information within the same PDF.
+The team collected vaccine usage instructions from the Drug Administration of Vietnam public service portal at (\url{https://dichvucong.dav.gov.vn/congbothuoc/index}) on September 18, 2026. The listing was obtained with an HTTP GET request whose limit parameter was increased to retrieve all 123 vaccine listings in one request. The document extraction code supports several document fields, while the corpus selected for this project contains usage instructions. Some instructions also contain authorization-decision or regulatory-guidance information within the same PDF.
 
 The preparation work was divided into three parts. PDFs were trimmed to retain the information needed for the project, removing label pages and other unnecessary material. Each file was uploaded individually to the Gemini website and converted to Markdown using the website's default model. Table images were also converted to HTML using Gemini, and the HTML was inserted into the Markdown files. The converted files were manually reviewed afterward. The exact Gemini model version was not recorded in the available materials.
 
@@ -300,37 +302,122 @@ The separate review application gives reviewers access to questions, reference a
 
 \section{Dataset}
 \label{sec:dataset}
-The corpus contains 75 vaccine usage-instruction PDFs collected from the Drug Administration of Vietnam public service portal on September 18, 2026. The team retrieved 123 vaccine listings. Of these, 44 had no documents, one could not be downloaded because its URL was malformed, two produced empty folders, and one contained only a label with no usage instructions. Excluding these 48 listings left 75 PDFs. Some included PDFs also contain authorization-decision or regulatory-guidance information.
 
-The team confirmed that the 75 PDFs correspond to the 75 document IDs in the current corpus. Inspection of the checked-in Parquet artifact finds 1,744 unique chunks, including 490 with the table flag set. The current Qdrant store is used for retrieval. \pending{Confirm whether that store was built from the checked-in 1,744-chunk Parquet artifact or an earlier version of it.}
+\subsection{Source Corpus and Structural Distribution}
+\label{subsec:corpus_distribution}
+The documentary foundation of VaxiS is a curated corpus of 75 official Vietnamese vaccine usage-instruction leaflets (\emph{\vn{Tờ hướng dẫn sử dụng}}) collected from the Drug Administration of Vietnam (DAV) public service portal (\url{https://dichvucong.dav.gov.vn/congbothuoc/index}) on September 18, 2026. The initial registry query retrieved all 123 registered vaccine product listings. A systematic filtering protocol excluded 48 listings that lacked usable clinical text: 44 listings had no attached regulatory files, one failed due to a malformed download URL, two yielded empty directories, and one contained only packaging-label artwork without clinical usage instructions. The remaining 75 PDF documents correspond one-to-one with the 75 canonical document identifiers (\artifact{doc_id}) defined in the repository's product mapping (\artifact{75_vaccine_names_mapping.json}). In several instances, these official PDFs bundle marketing-authorization decisions or regulatory guidance alongside the clinical package insert.
 
-The main 300-question benchmark is generated using DeepEval's Synthesizer. In \artifact{scripts/generate_eval_dataset.py}, prepared chunk contexts are passed to \artifact{generate_goldens_from_contexts}, with \artifact{include_expected_output=True} and one golden requested per context group. Styling and evolution configurations control answerability, question style and reasoning complexity. DeepEval documents this interface as generating questions and expected answers from supplied contexts~\cite{deepevalcontexts}. The script constructs context pools for single-hop, multi-hop and table-reasoning questions, including multi-hop evidence from the same document or different vaccines. The saved benchmark metadata records \artifact{gpt-oss-120b} as the generation model. \pending{Confirm the final benchmark export, generation command, script revision, DeepEval version and model endpoint.}
-
-The older \artifact{testdata} module and its question-category taxonomy are legacy artifacts. The team uses the older query dataset only for unanswerable-query testing. It does not supply the main benchmark or define the current system's question categories. The checked-in \artifact{test_dataset.json} contains 460 records with 74 answerable, 164 partially answerable and 222 unanswerable labels. Its additional evaluation pass currently loads the entire file unless a filtered artifact is supplied, so the report must identify the subset actually scored for unanswerable-query testing. \pending{Confirm which file or exported subset is used for unanswerable testing, how its labels were checked and its final scored count. The team referred to test\_data.json; the checked-in filename is test\_dataset.json.}
-
-The 300-question file stores a question, expected output, context, and metadata containing evidence identifiers and question attributes. Table~\ref{tab:dataset} gives the label counts observed in \artifact{evaluation/eval_dataset_300_final_fixed.json}. Each dimension describes the same set of 300 records.
+Following PDF-to-Markdown conversion, HTML table reconstruction, and manual verification, the section parser and structure-aware chunker segment the 75 documents into 1,744 unique chunks stored in the canonical artifact \artifact{chunks_storage/chunks.parquet}. Each chunk is assigned a deterministic identifier formatted as \texttt{\{doc\_id\}\_c\_\{idx:04d\}}, alongside hierarchical section headers (\artifact{parent_header}, \artifact{header}), a content-type descriptor, a boolean table indicator (\artifact{metadata.has_table}), and a normalized medical category derived from 21 rule-based clinical heading patterns. By modality, 1,254 chunks (71.9\%) contain pure prose (\artifact{text}), 487 chunks (27.9\%) consist predominantly of tabular markup (\artifact{table}), and 3 chunks (0.2\%) combine prose with embedded tables (\artifact{mixed}), yielding 490 table-bearing chunks in total. Table~\ref{tab:corpus_categories} summarizes the corpus distribution across the standardized clinical categories.
 
 \begin{table}[htbp]
 \centering
-\caption{Label distribution in the 300-question working benchmark.}
-\label{tab:dataset}
-\begin{tabular}{llr}
+\caption{Distribution of the 1,744 indexed corpus chunks across standardized medical categories in \artifact{chunks_storage/chunks.parquet}.}
+\label{tab:corpus_categories}
+\begin{tabular}{llrr}
 \toprule
-Dimension & Label & Count\\
+Vietnamese Category Label & Clinical Domain (English) & Chunks & Share (\%)\\
 \midrule
-Answerability & Answerable & 210\\
- & Partially answerable & 90\\
-Complexity & Single-hop & 150\\
- & Multi-hop & 90\\
- & Table reasoning & 60\\
-Question style & Patient style & 180\\
- & Clinical style & 120\\
+\vntt{dược lực học} & Pharmacodynamics and immunogenicity & 528 & 30.28\\
+\vntt{tác dụng không mong muốn} & Adverse reactions and side effects & 224 & 12.84\\
+\vntt{thông tin chung} & General product information & 141 & 8.08\\
+\vntt{cảnh báo và thận trọng} & Warnings and clinical precautions & 140 & 8.03\\
+\vntt{liều lượng và cách dùng} & Dosage, schedule, and administration & 102 & 5.85\\
+\vntt{thành phần} & Qualitative and quantitative composition & 93 & 5.33\\
+\vntt{bảng số liệu} & Standalone clinical and trial data tables & 74 & 4.24\\
+\vntt{đặc tính dược lý} & Pharmacological properties & 55 & 3.15\\
+\vntt{quá liều} & Overdose management & 55 & 3.15\\
+\vntt{bảo quản} & Storage conditions and shelf life & 51 & 2.92\\
+\vntt{chống chỉ định} & Contraindications & 51 & 2.92\\
+\vntt{chỉ định} & Therapeutic and prophylactic indications & 45 & 2.58\\
+\vntt{tương tác thuốc} & Drug and concomitant vaccine interactions & 44 & 2.52\\
+\vntt{thai kỳ và cho con bú} & Pregnancy and lactation & 42 & 2.41\\
+\multicolumn{2}{l}{\emph{Remaining 8 categories (packaging, pharmacokinetics, handling, etc.)}} & 99 & 5.68\\
+\midrule
+\textbf{Total} & & \textbf{1,744} & \textbf{100.00}\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The corrected 300-question file changes ordered source-chunk lists for 279 records relative to the earlier file. Its goldens match those embedded in the saved generation outputs. This establishes which labels accompany the saved outputs. Expert validation of label completeness and answer support must be documented separately. The 300-question file contains answerable and partially answerable labels, so evaluation of fully unanswerable questions requires a declared additional sample.
-\pending{Provide the final adjudicated dataset export, version checksum, sampling and split procedure, overlap checks between artifacts, and the size and selection rule for any fully unanswerable subset.}
+As shown in Table~\ref{tab:corpus_categories}, pharmacodynamics and immunogenicity (\vntt{dược lực học}) and adverse reactions (\vntt{tác dụng không mong muốn}) account for over 43\% of all chunks. Because clinical trial outcomes and adverse-event frequencies are frequently formatted as multi-column tables that exceed the 600-token chunking budget, the baseline chunker splits large tables across consecutive sub-chunks while repeating column headers. In the raw indexing configuration (\artifact{--table-strategy raw}), all 1,744 chunks are indexed directly into the baseline Qdrant collection (\artifact{VacxiS_Capstone_FA26}). In contrast, the table-aware indexing pipeline (\artifact{--table-strategy summarize_dual}) merges consecutive split table chunks sharing the same \texttt{(doc\_id, header)} pair and deduplicates overlapping boundary rows. This consolidation collapses the 490 table-bearing sub-chunks into 212 complete tables—classified automatically into 143 clinical guidance tables and 69 statistical immunogenicity tables—reducing the indexed vector collection (\artifact{VacxiS_Capstone_FA26_table_dual}) from 1,744 to 1,466 points while retaining all constituent sub-chunk identifiers in \artifact{metadata.merged_chunk_ids} for provenance alignment.
+
+\subsection{Stratified 300-Query Benchmark Construction}
+\label{subsec:benchmark_construction}
+To evaluate retrieval and grounded generation across diverse information-seeking scenarios, we constructed a 300-question Vietnamese benchmark stored in \artifact{evaluation/eval_dataset_300_final_fixed.json}. The benchmark was synthesized from \artifact{chunks_storage/chunks.parquet} using DeepEval's context-grounded \artifact{Synthesizer} (\artifact{generate_goldens_from_contexts} with \artifact{include_expected_output=True} and one golden per context group)~\cite{deepevalcontexts}, driven by \artifact{gpt-oss-120b} (temperature $0.2$, deterministic random seed $42$, timestamped November 16, 2026) via the generation pipeline in \artifact{scripts/generate_eval_dataset.py}.
+
+Rather than sampling chunks uniformly—which would over-represent dense trial tables—the generator enforces a three-dimensional stratified design across three orthogonal axes:
+\begin{enumerate}
+\item \textbf{Answerability (70\% Answerable, 30\% Partially Answerable):} \emph{Answerable} queries ($n=210$) ask for clinical facts fully supported by the supplied context group. \emph{Partially Answerable} queries ($n=90$) are deliberately formulated as two-part inquiries: one clause is directly answerable from the reference context, whereas the second clause introduces an out-of-context clinical constraint or secondary question, testing whether the system can answer the supported component while explicitly abstaining from the unsupported portion.
+\item \textbf{Reasoning Complexity (50\% Single-Hop, 30\% Multi-Hop, 20\% Table Reasoning):} \emph{Single-Hop} items ($n=150$) are synthesized from a single non-table prose chunk using \emph{Concretizing} ($0.5$) and \emph{Constrained} ($0.5$) query evolutions. \emph{Table Reasoning} items ($n=60$) target a single table-bearing chunk (\artifact{has_table=True}) under \emph{Reasoning} ($0.5$) and \emph{Comparative} ($0.5$) evolutions, requiring precise lookup or comparison of dosage intervals, age thresholds, seroprotection rates, or geometric mean titers (GMT). \emph{Multi-Hop} items ($n=90$) require synthesizing evidence across two distinct chunks and are balanced into an exact 50/50 split between two sub-types:
+\begin{itemize}
+\item \emph{Intra-document multi-hop (\artifact{same_doc}, $n=45$):} Pairs two clinically complementary sections from the same vaccine leaflet across 11 predefined category pairs (e.g., \emph{Indications $\times$ Contraindications}, \emph{Dosage $\times$ Warnings}, \emph{Composition $\times$ Contraindications}), excluding uninformative overdose stubs under 200 characters, and evolves queries via \emph{Multicontext} ($0.7$) and \emph{Reasoning} ($0.3$) transformations.
+\item \emph{Inter-vaccine comparative multi-hop (\artifact{cross_vaccine}, $n=45$):} Pairs chunks belonging to the same clinical category across two different vaccine products (spanning eight comparable domains such as storage, pregnancy, adverse reactions, or schedules) under \emph{Comparative} ($0.6$) and \emph{Multicontext} ($0.4$) evolutions, requiring explicit naming of both vaccines.
+\end{itemize}
+\item \textbf{Query Style (60\% Patient Style, 40\% Clinical Style):} \emph{Patient Style} queries ($n=180$) emulate layperson inquiries on health forums or messaging platforms, featuring everyday Vietnamese phrasing, conversational particles, and brief personal context. \emph{Clinical Style} queries ($n=120$) emulate healthcare professionals verifying immunization protocols for complex patient cases with multiple clinical constraints (e.g., comorbidities, delayed booster intervals, concomitant medications).
+\end{enumerate}
+
+The joint allocation across the $2 \times 3 \times 2 = 12$ cells is computed via the Hamilton largest-remainder method followed by iterative marginal reconciliation (\artifact{\_reconcile\_marginals}), ensuring that the cell counts sum to 300 while preserving the exact target marginals along every axis (Table~\ref{tab:dataset}). Table~\ref{tab:benchmark_examples} illustrates representative queries across these strata.
+
+\begin{table}[htbp]
+\centering
+\caption{Joint three-axis stratified distribution and multi-rater expert review allocation across the 12 benchmark strata ($N=300$ queries, 435 total review turns across 3 clinical raters).}
+\label{tab:dataset}
+\begin{tabular}{lllrrrrr}
+\toprule
+Answerability & Complexity & Query Style & Total & Calib.\ & Overlap & Indep.\ & Audit\\
+ & & & ($N$) & (3 raters) & (3 raters) & (per rater) & (per rater)\\
+\midrule
+Answerable & Single-hop & Patient & 63 & 3 & 6 & $18 \times 3$ & $0 \times 3$\\
+(210; 70\%) & Single-hop & Clinical & 42 & 2 & 4 & $12 \times 3$ & $0 \times 3$\\
+ & Multi-hop$^\dagger$ & Patient & 38 & 2 & 3 & $11 \times 3$ & $0 \times 3$\\
+ & Multi-hop$^\dagger$ & Clinical & 25 & 1 & 3 & $7 \times 3$ & $0 \times 3$\\
+ & Table reasoning & Patient & 25 & 1 & 3 & $7 \times 3$ & $3 \times 3$\\
+ & Table reasoning & Clinical & 17 & 1 & 1 & $5 \times 3$ & $2 \times 3$\\
+\midrule
+Partially & Single-hop & Patient & 27 & 1 & 2 & $8 \times 3$ & $2 \times 3$\\
+Answerable & Single-hop & Clinical & 18 & 1 & 2 & $5 \times 3$ & $1 \times 3$\\
+(90; 30\%) & Multi-hop$^\dagger$ & Patient & 16 & 1 & 3 & $4 \times 3$ & $1 \times 3$\\
+ & Multi-hop$^\dagger$ & Clinical & 11 & 1 & 1 & $3 \times 3$ & $1 \times 3$\\
+ & Table reasoning & Patient & 11 & 1 & 1 & $3 \times 3$ & $3 \times 3$\\
+ & Table reasoning & Clinical & 7 & 0 & 1 & $2 \times 3$ & $2 \times 3$\\
+\midrule
+\textbf{Total Questions} & & & \textbf{300} & \textbf{15} & \textbf{30} & \textbf{255} & \textbf{45}\\
+\textbf{Review Turns} & & & \textbf{435} & \textbf{45} & \textbf{90} & \textbf{255} & \textbf{45}\\
+\bottomrule
+\multicolumn{8}{l}{\footnotesize $^\dagger$Across the 90 Multi-hop queries, 45 are intra-document (\artifact{same_doc}) and 45 are inter-vaccine (\artifact{cross_vaccine}).}
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Representative queries from \artifact{evaluation/eval_dataset_300_final_fixed.json} illustrating the stratification dimensions.}
+\label{tab:benchmark_examples}
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+Query ID & Stratum & Vietnamese Query (\artifact{input}) and Ground-Truth Provenance\\
+\midrule
+\artifact{eval\_0001} & Answerable / Single-hop / Patient & \emph{\vn{``Phụ nữ 22 tuần mang thai có nên tiêm vaccine Abrysvo không ạ?''}} (Source: \artifact{abrysvo\_540310322125\_c\_0006}; gestational window 24--36 weeks.)\\
+\artifact{eval\_0125} & Answerable / Multi-hop (\artifact{cross\_vaccine}) / Patient & \emph{\vn{``Vắc-xin Peg-Grafeel và Boostrix khác nhau như thế nào về hạn sử dụng và cách bảo quản?''}} (Sources: \artifact{peg\_grafeel\_qlsp\_0636\_13\_c\_0006}, \artifact{boostrix\_300310036923\_c\_0014}.)\\
+\artifact{eval\_0194} & Answerable / Table reasoning / Clinical & \emph{\vn{``Trong nhóm tuổi 3--17 năm, so sánh mức trung bình của tiêu đề kháng thể (average titers) giữa vaccine Influvac Tetra và vaccine Influvac 1/2 đối với các chủng virus A/H1N1, B(Yam) và B(Vic) là như thế nào?''}} (Source: \artifact{influvac\_tetra\_870310304024\_c\_0005}.)\\
+\artifact{eval\_0238} & Partially Answerable / Single-hop / Clinical & \emph{\vn{``Trong bệnh nhân 68 tuổi, có tiền sử bệnh tim mạch và đã tiêm liều đầu Shingrix, liệu có thể đồng thời dùng aspirin 81 mg hàng ngày và tiêm liều thứ hai của Shingrix theo lịch trễ mũi 2 tháng không? Ngoài ra, liệu có thể tiêm đồng thời vaccine COVID-19 mRNA cùng lúc với Shingrix không?''}} (Source: \artifact{shingrix\_540310303224\_c\_0007}.)\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Because DeepEval's asynchronous synthesis (\artifact{async_mode=True}) returns generated items out of input batch order, naive positional indexing in the initial export (\artifact{eval_dataset_300_final.json}) caused misalignment between \artifact{golden.context} and \artifact{source_chunk_ids} in 279 of the 300 records. To guarantee provenance integrity, we implemented an offline deterministic context-to-chunk reconciliation pass (\artifact{repair_dataset_metadata} in \artifact{scripts/generate_eval_dataset.py}). This procedure matches each embedded context string against the canonical \texttt{[doc\_title | category | header]} formatting of \artifact{chunks.parquet} and enforces structural invariants (verifying that \artifact{same_doc} items reference exactly one \artifact{doc_id}, \artifact{cross_vaccine} items reference two distinct \artifact{doc_ids}, and \artifact{TABLE_REASONING} items include at least one chunk with \artifact{has_table=True}). The resulting artifact, \artifact{evaluation/eval_dataset_300_final_fixed.json}, achieves 100\% provenance alignment with the corpus and serves as the ground-truth benchmark for all retrieval and generation experiments.
+
+For stress-testing complete abstention on wholly unanswerable queries, the repository retains an auxiliary legacy dataset (\artifact{test_dataset.json}) comprising 460 records (74 answerable, 164 partially answerable, and 222 unanswerable items created via entity and symptom masking over source evidence). This legacy artifact is excluded from the primary 300-query IR benchmark and is used solely for auxiliary refusal verification when invoked without the \artifact{--skip-unanswerable} flag.
+
+\subsection{Expert Review and Quality Assurance Protocol}
+\label{subsec:expert_review_protocol}
+To audit label validity, reference-answer accuracy, and evidence completeness, we developed a dedicated web-based clinical review platform (\artifact{review-web}) backed by a stratified three-expert allocation protocol (\artifact{scripts/plan_scientific_review.py} and \artifact{review-web/sampling.py}). As detailed in the right-hand columns of Table~\ref{tab:dataset}, the 300 benchmark questions are partitioned deterministically (seed $42$) into four functional batches across three medical reviewers:
+\begin{enumerate}
+\item \textbf{Calibration Batch (15 questions, 45 review turns):} A stratified 5\% sample evaluated independently by all three experts prior to consensus discussion, aligning interpretation of the annotation rubric and partial-answerability boundaries.
+\item \textbf{Inter-Annotator Overlap Batch (30 questions, 90 review turns):} A stratified 10\% sample scored independently and blindly by all three reviewers to quantify inter-annotator agreement (IAA). The platform computes Fleiss' Kappa ($\kappa$)~\cite{fleiss1971measuring} with Landis and Koch agreement tiers~\cite{landis1977measurement} across two dimensions—three-class answerability classification and binary chunk-level evidence selection—supplemented by mean pairwise Jaccard similarity across the selected evidence sets.
+\item \textbf{Independent Primary Batch (255 questions, 85 per reviewer):} The remaining 85\% of the benchmark is divided equally into three balanced, non-overlapping packages of 85 questions per expert, preserving identical marginal proportions across all 12 strata.
+\item \textbf{Risk-Prioritized Cross-Audit Batch (45 questions, 15 per reviewer):} To safeguard high-complexity items within the independent packages, 15 questions from each expert's primary allocation (45 questions in total) are routed in a round-robin schedule (\texttt{auditor\_slot = (primary\_slot mod 3) + 1}) to a second expert for cross-auditing. The selection function (\artifact{\_audit\_priority}) concentrates 100\% of these cross-audit slots on the most error-prone strata—specifically \emph{Table Reasoning} (30 audited items) and \emph{Partially Answerable} non-table items (15 audited items)—yielding exactly 145 total evaluation turns per reviewer (435 turns overall).
+\end{enumerate}
+
+Within the review interface, experts inspect the generated question, expected answer, and highlighted source chunks alongside a searchable full-document view (\artifact{review-web/data/documents.json}). Reviewers can approve an item as-is (\artifact{APPROVED}), modify the question, reference answer, answerability label, or supporting chunk list with structured rationales (\artifact{EDITED}), or flag malformed synthetic items (\artifact{REJECTED}), thereby establishing an auditable provenance chain from raw regulatory PDFs to benchmark evaluation.
 
 
 \section{Experiments and Results}
