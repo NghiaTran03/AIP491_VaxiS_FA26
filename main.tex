@@ -1,0 +1,752 @@
+\documentclass[sn-mathphys, oneside]{sn-jnl}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{indentfirst}
+% Used to describe data
+\usepackage{listings}
+\usepackage{xcolor}
+\lstdefinelanguage{json}{
+    basicstyle=\ttfamily\footnotesize,
+    numbers=left,
+    numberstyle=\tiny,
+    stepnumber=1,
+    breaklines=true,
+    frame=single,
+    literate=
+     *{0}{{{\color{blue}0}}}{1}
+      {1}{{{\color{blue}1}}}{1}
+      {2}{{{\color{blue}2}}}{1}
+      {3}{{{\color{blue}3}}}{1} 
+}      
+%
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{placeins}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage[font=small,labelfont=bf,labelsep=colon]{caption}
+\captionsetup[table]{textfont=it, name=Table, labelsep=colon, skip=6pt}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode} 
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage[numbers]{natbib}
+\usepackage{amssymb}
+\usepackage{pifont}
+\usepackage{float}
+\usepackage{mathptmx} 
+\usepackage[most]{tcolorbox}
+% \documentclass{article}
+% \usepackage[utf8]{inputenc}
+% \usepackage[vietnamese]{babel}
+\usepackage{tikz}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{tocloft} % Package for customizing the table of contents
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\makeatletter
+\newenvironment{breakablealgorithm}
+  {% \begin{breakablealgorithm}
+   \begin{center}
+     \refstepcounter{algorithm}%
+     \hrule height.8pt depth0pt \kern2pt%
+     \renewcommand{\caption}[2][\relax]{%
+       {\raggedright\textbf{\ALG@name~\thealgorithm} ##2\par}%
+       \ifx\relax##1\relax
+         \addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##2}%
+       \else
+         \addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##1}%
+       \fi
+       \kern2pt\hrule\kern2pt
+     }
+  }{%
+     \kern2pt\hrule\relax%
+   \end{center}
+  }
+\makeatother
+
+% 1. Prepend "Figure" before the number
+\renewcommand{\cftfigpresnum}{Figure } 
+
+% 2. Increase the space reserved for the figure number
+% (Without this, "Figure 1" label would overlap with the caption)
+\setlength{\cftfignumwidth}{4.5em} 
+
+
+\usetikzlibrary{shapes, arrows.meta, positioning, calc, fit, shadows}
+\newcommand{\pending}[1]{\textbf{\textcolor{red!65!black}{[PLACEHOLDER: #1]}}}
+\newcommand{\artifact}[1]{\nolinkurl{#1}}
+% 
+% --- INSERT THIS BLOCK INTO THE PREAMBLE (AFTER PACKAGE IMPORTS) ---
+\geometry{
+    paper=a4paper,      % A4 paper size
+    left=2.5cm,         % Left margin 2.5cm
+    right=2.5cm,        % Right margin 2.5cm (matches left margin)
+    top=2.5cm,          % Top margin
+    bottom=2.5cm,       % Bottom margin
+    bindingoffset=0cm   % Important: keep binding offset at 0 to avoid text shift
+}
+\raggedbottom
+% -----------------------------------------------------------
+% Start a new page for the main content
+\begin{document}
+
+% --- Title page ---
+\begin{titlepage}
+    \centering
+    
+    % --- Header Section: Logo and Ministry of Education and Training ---
+    \begin{minipage}{0.45\textwidth}
+        \begin{flushleft}
+            % Make sure logo.png has proper proportions, or adjust width accordingly
+            \includegraphics[width=5cm]{logo.png} 
+        \end{flushleft}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.5\textwidth}
+        \begin{flushright}
+            \textbf{MINISTRY OF EDUCATION AND TRAINING}
+        \end{flushright}
+    \end{minipage}
+
+    \vspace{2.5cm}
+
+    % --- University name ---
+    {\Huge \textbf{FPT UNIVERSITY}\par}
+
+    \vspace{2.5cm}
+
+    % --- Document type ---
+    {\huge Capstone Project Document \par}
+
+    \vspace{0.5cm}
+    % % Horizontal rule
+    % \rule{\textwidth}{0.4pt}
+    % \vspace{0.5cm}
+
+    % --- Thesis title ---
+    {\Large \textbf{VaxiS: An Evidence-Grounded Retrieval-Augmented Generation System for Vietnamese Vaccine Information Retrieval} \par}
+
+    \vspace{2.5cm}
+
+    % --- 4. INFORMATION TABLE (framed as in the reference image) ---
+    \begin{center}
+        \renewcommand{\arraystretch}{1.5} % Increase row height for readability
+        \setlength{\arrayrulewidth}{0.8pt} % Table border thickness
+        
+        % Create table: Column 1 (4.5cm), Column 2 (10cm)
+        \begin{tabular}{|p{4.5cm}|p{10cm}|}
+            \hline
+            % Group heading row (merged cells)
+            \multicolumn{2}{|c|}{\textbf{AIP491 GROUP 5}} \\ 
+            \hline
+            \textbf{Group Members} & 
+           Nguyen Manh Hung - HE194092  \newline
+           Tran Trong Nghia - HE190336
+            \newline
+            Ho Minh Hieu - HE194091 \\
+            \hline
+            \textbf{Supervisor} &  Mr Tran Van Ha\\ % Mr
+            \hline
+            \textbf{Capstone Project code} & AIP491  \\
+            \hline
+        \end{tabular}
+    \end{center}
+
+    \vfill
+
+    % --- Footer: Location and date ---
+    {\large - Hanoi, 11/2026 - \par}
+    
+\end{titlepage}
+
+\clearpage % new page for the article body following sn-jnl
+%=====================================
+% 2) Front matter following sn-jnl convention
+%=====================================
+\begin{center}
+    \bfseries\Large Abstract
+\end{center}
+
+
+Vietnamese vaccine information is published in documents that vary in structure and are often written for specialist readers. VaxiS is a Vietnamese-language retrieval-augmented generation system designed to help users locate relevant passages and trace an answer to its documentary evidence. The repository contains a structure-aware Markdown indexing pipeline, lexical and dense retrieval paths, and a hybrid retrieval pipeline that combines dense and learned sparse rankings before optional reranking. A shared generator uses the retrieved chunks as context and tracks citations to chunk identifiers. The experimental design follows six configurations in order: Naive, Advanced, Hybrid (baseline), Table-aware, Graph RAG, and Agent RAG. The working benchmark contains 300 Vietnamese questions spanning single-hop, multi-hop, and table-reasoning tasks. \pending{For the final three configurations, implementation and evaluation documentation are pending. Insert the verified comparison findings, with the benchmark revision, scored population, and headline retrieval and answer-quality values.}
+
+\textbf{Keywords}: Vaccine information, Vietnamese question answering, retrieval-augmented generation, hybrid retrieval, evidence attribution.
+
+% ... sau \maketitle
+\newpage
+\begin{center}
+    \bfseries\Large Acknowledgments
+\end{center}
+
+We sincerely thank all those who contributed to the completion of this capstone project.
+
+First, our deepest appreciation goes to our supervisor, Mr. Tran Van Ha, whose expert guidance, thoughtful direction, and extensive domain knowledge were indispensable throughout every phase of this work. His constructive feedback, patience, and consistent encouragement enabled the team to refine both the conceptual foundations and technical implementation of this system to the highest standard we could achieve.
+
+We are equally grateful to FPT University for providing a rigorous and stimulating academic environment. The knowledge imparted by faculty members across the department established the theoretical groundwork upon which this project was built. The university's infrastructure, research resources, and high standards of academic training created the conditions necessary for us to explore and realize our ideas with confidence.
+
+We would also like to acknowledge our peers and colleagues for their candid discussions, willingness to share knowledge, and constructive critique. Their perspectives helped us examine the problem from multiple angles and materially improved the quality of this work.
+
+Finally, and most profoundly, we thank our families for their unwavering support and understanding throughout this process. Their encouragement and the conditions they provided allowed us to devote ourselves fully to this research.
+\newpage
+\tableofcontents
+\newpage
+\listoffigures
+\newpage
+\section{Introduction}
+
+\subsection{Motivation}
+VaxiS addresses a practical information access problem. A user may know a vaccine by its product name and have a specific question, while the relevant source is a long instruction leaflet or regulatory document. Locating the applicable passage requires identifying the product, recognizing the relevant section and interpreting any qualifications recorded in nearby text or table notes. The project supports natural-language lookup of information in the collected vaccine usage instructions. The topic taxonomy in the older testdata module belongs to its dataset-generation workflow and does not define the current system's supported question categories.
+
+Retrieval-augmented generation (RAG) brings evidence from an external collection into the generation process~\cite{lewis2020rag}. In this setting, the evidence should be accessible to the reader so the answer can be checked against the source. Producing a fluent response, citing a retrieved passage, and supporting each factual claim are distinct requirements. Research on generation with citations similarly evaluates attribution as a quality dimension alongside answer correctness~\cite{gao2023citations}.
+
+The primary intended users are ordinary citizens. Healthcare workers and healthcare students are secondary users who may use the system for document lookup. The scope is general access to published information. Diagnosis, individual treatment decisions, and processing personal medical records fall outside the project scope.
+
+\subsection{Objectives}
+The main research question is how to retrieve relevant evidence from Vietnamese vaccine documents and use it to generate a comprehensible answer with traceable citations, including when the available evidence is incomplete.
+
+\begin{enumerate}
+\item Prepare a searchable corpus from available vaccine source documents, retaining the document identifiers and section metadata needed to trace evidence.
+\item Compare lexical, dense, and hybrid retrieval, then assess the proposed Table-aware, Graph RAG, and Agent RAG extensions.
+\item Generate Vietnamese responses that cite the supplied evidence and communicate when the evidence is insufficient.
+\item Assess retrieval quality, answer quality, citation support, and abstention using documented datasets and reproducible run configurations.
+\end{enumerate}
+
+%
+\section{Related Work}
+
+\subsection{Automated Access to Vaccine Information}
+Li et al.\ developed VaxBot-HPV around a curated knowledge base and a fine-tuned GPT model for HPV vaccine questions. Their evaluation included answer relevancy and faithfulness, two criteria that inform the assessment of VaxiS~\cite{li2025vaxbothpv}.
+
+The Vaccine Information Resource Assistant (VIRA), developed by Johns Hopkins and IBM Research, uses natural language understanding to match questions to expert-vetted responses about COVID-19 vaccination. Its English and Spanish interfaces illustrate the value of organizing answers around user concerns and making reviewed content accessible in the user's language~\cite{jhuvira}.
+
+K-Bot provides culturally tailored HPV vaccine information in Korean and English. Its authors designed dialogs around evidence-based content adapted to their intended audience. This work motivates attention to phrasing and accessibility in a Vietnamese-language interface~\cite{kim2025kbot}. VaxiS focuses on source-grounded question answering over the Vietnamese documents available to the project, with provenance carried through retrieval and generation.
+
+\subsection{Evidence-Grounded Question Answering over Vaccine Documents}
+BM25 uses corpus statistics and document length to score lexical matches~\cite{robertson2009bm25}. Dense retrieval instead ranks passages through similarity in an embedding space. BGE-M3 provides both dense representations and learned sparse lexical weights in a multilingual encoder~\cite{chen2024m3}. Reciprocal rank fusion combines the positions assigned by multiple retrieval streams on a common scale~\cite{cormack2009rrf}.
+
+Evidence can also cross representational boundaries. HybridQA studies questions that require combining tables with associated passages~\cite{chen2020hybridqa}. Graph RAG research illustrates how entities and relationships extracted from documents can organize evidence for a query~\cite{edge2024graphrag}. ReAct illustrates how a language model can interleave decisions with actions that gather information~\cite{yao2023react}. These works motivate candidate extensions to the VaxiS pipeline. The specific designs and empirical effects of those extensions require project implementation records and completed runs.
+
+\section{Methodology}
+
+\subsection{Overview of the Vaccine Question-Answering System}
+The documented pipeline has a document-preparation and indexing stage followed by question answering. Document preparation collects PDFs from the Drug Administration of Vietnam public service portal and converts them to Markdown using Google's Gemini. Indexing turns cleaned Markdown into identifiable chunks, adds document and section metadata, and persists the chunks in Parquet. The vector indexing path prepares dense and sparse representations in Qdrant. During question answering, the selected retriever ranks chunks. The generator receives the question and selected evidence, produces a Vietnamese response, and tracks the chunk identifiers cited by the response. The evaluation tooling also supports scoring ranked results stored from an earlier run.
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{.9\linewidth}{\centering
+Scraped PDFs $\rightarrow$ Gemini $\rightarrow$ Cleaned Markdown\\[.6em]
+Section-aware chunks with metadata $\rightarrow$ Parquet and Qdrant\\[.6em]
+Vietnamese question $\rightarrow$ Selected retriever $\rightarrow$ Evidence chunks\\[.6em]
+Evidence and question $\rightarrow$ Generator $\rightarrow$ Response and source identifiers}}
+\caption{Documented VaxiS indexing and question-answering flow. The evidence store used depends on the retrieval configuration.}
+\label{fig:system}
+\end{figure}
+
+The repository includes a conversational entry point with query planning and memory, as well as single-query evaluation entry points. The benchmark protocol should record the entry point used. The presence of conversational planning in the application is insufficient to establish the Agent RAG experiment.
+
+\subsection{Vaccine Metadata Module}
+The corpus organization and vaccine name mapping associate cleaned source records with product identifiers and names. The implemented chunk schema supplies document identity, section headings, text, a topic category, a content type and a table flag. These fields support traceability and subsequent analysis, for example by identifying table-bearing chunks or grouping evidence by product. The document-discovery code concatenates the Markdown files in each registration folder into a single indexing document. It constructs a document ID from the mapped vaccine name and folder ID, and synthesizes a display title beginning with the Vietnamese phrase for vaccine usage instructions. This display title does not establish the title or type of each original PDF. The stored source-file metadata records Markdown filenames. The project plan also identifies document type, issuer, publication date and regulatory status as useful provenance fields.
+\pending{Supply the frozen corpus metadata dictionary, field coverage, source URL and original-page mapping policy, and the rule for selecting among conflicting or superseded documents.}
+
+\subsection{Vaccine Document Processing Module}
+The team collected vaccine usage instructions from the Drug Administration of Vietnam public service portal at \url{https://dichvucong.dav.gov.vn/} on September 18, 2026. The listing was obtained with an HTTP GET request whose limit parameter was increased to retrieve all 123 vaccine listings in one request. The document extraction code supports several document fields, while the corpus selected for this project contains usage instructions. Some instructions also contain authorization-decision or regulatory-guidance information within the same PDF.
+
+The preparation work was divided into three parts. PDFs were trimmed to retain the information needed for the project, removing label pages and other unnecessary material. Each file was uploaded individually to the Gemini website and converted to Markdown using the website's default model. Table images were also converted to HTML using Gemini, and the HTML was inserted into the Markdown files. The converted files were manually reviewed afterward. The exact Gemini model version was not recorded in the available materials.
+
+The repository indexing code starts from the cleaned Markdown. Its parser splits the content into sections, and its chunker groups short sections and divides long sections under a length budget. The chunker defaults to a minimum of 80 and maximum of 600 estimated token units, with an overlap of 50. The estimate uses whitespace-separated words and an added allowance for HTML tags. The code accounts for Markdown and HTML table markup and handles oversized tables separately from prose. These are the current implementation defaults. \pending{Confirm the chunking settings used to build the corpus evaluated in the experiments.} The distinct Table-aware ablation still requires a versioned definition of its representation and retrieval behavior.
+
+The design must preserve provenance when chunk boundaries are changed. A question can depend on a qualifier in an adjacent paragraph or a footnote that changes the interpretation of a row. A useful audit records the original source location and whether the selected evidence preserves those dependencies.
+\pending{Provide the conversion prompt if retained, the conversion dates, and any recorded details of the manual review procedure. The exact Gemini model version remains unspecified unless a contemporaneous record is available.}
+
+\subsection{Vaccine Knowledge Graph Module}
+Graph RAG is the fifth configuration in the study. Its purpose is to test whether graph-structured evidence helps retrieve information distributed across passages. A reproducible specification requires the graph schema, the extraction and entity resolution rules, and the links from graph facts to source evidence.
+\pending{Provide the Graph RAG implementation path and commit, node and edge schema, entity normalization and extraction procedure, storage backend, graph coverage and counts, and provenance strategy. Attach a verified graph example.}
+\pending{Provide the graph-specific evaluation slice, comparison configuration, run artifacts, metrics and observed failure cases.}
+
+\subsection{Retrieval-Augmented Generation Module}
+Naive uses the repository's BM25 retrieval path over the chunk corpus. The evaluation CLI selects it with \artifact{--baseline}. Hybrid is the study baseline against which subsequent extensions are compared. Advanced embeds the original query with BGE-M3 and searches the dense Qdrant index before passing the top-ranked chunks to the shared generator.
+
+Hybrid queries the BGE-M3 dense and learned sparse indexes. The implementation aggregates candidate ranks using weighted reciprocal rank fusion,
+\[
+ S(d)=\sum_{i:\,d\in L_i}\frac{w_i}{c+\mathrm{rank}_i(d)},
+\]
+where \(L_i\) is a candidate ranking, \(w_i\) its weight and \(c\) a smoothing constant. Hybrid uses the \artifact{BAAI/bge-m3} embedding checkpoint and the \artifact{BAAI/bge-reranker-v2-m3} cross-encoder reranker. The current configuration defaults to 50 candidates from each stream, a fusion constant of 60, 30 fused candidates, a final depth of five and enabled reranking. These are code defaults, and the experiment manifest must establish the settings actually used. The run record must identify the candidate depths, fusion settings, reranker checkpoint and final evidence depth.
+
+Table-aware is the fourth configuration and is intended to measure retrieval and grounding on questions that depend on tabular structure.
+\pending{Provide the Table-aware implementation path and commit, table and cell representation, preservation of headers and footnotes, retrieval and reranking changes, and source attribution behavior. State exactly how it differs from the shared chunker and Hybrid.}
+\pending{Provide the Table-aware run configuration, table-dependent subset definition, per-query outputs, retrieval and answer metrics, and an audited row or footnote error example.}
+
+For Graph RAG, the retrieval component must specify how a question is associated with graph entities, how candidate paths are selected, and how their supporting passages enter the generator.
+\pending{Provide the actual Graph RAG retrieval algorithm, graph search parameters, evidence ordering, and fallback behavior.}
+
+Agent RAG is the sixth configuration and is intended to evaluate tool-mediated evidence gathering across retrieval steps.
+\pending{Provide the Agent RAG implementation path and commit, model, available tools, routing and stopping logic, evidence aggregation and citation rules, call budget, fallback behavior, and an example trace.}
+\pending{Provide the Agent RAG evaluation protocol, query coverage, comparison settings, metrics, tool-call and latency summaries, and failure analysis.}
+
+\subsection{Answer Grounding and Verification}
+The generator asks the model to answer from supplied evidence, cite chunk identifiers and communicate when the context is insufficient. The implementation extracts citation identifiers and checks their membership in the supplied chunks. It records valid and invalid identifiers and flags refusals by matching a fixed list of Vietnamese phrases. This heuristic requires validation against human judgments. The shared LLM response-validation function currently returns the provider response directly, so the code does not establish a general guarantee that every empty, refused or truncated completion is rejected. The planner applies additional output checks. Citation membership establishes traceability to context. Assessing whether a passage supports a particular claim requires semantic review.
+
+The separate review application gives reviewers access to questions, reference answers, and source passages. Its workflow supports changes to the answer and evidence selection, with code paths for consensus and adjudication. The review application provides a way to audit the benchmark and its provenance.
+\pending{Provide the final expert review protocol, reviewer qualifications and counts, adjudication outcomes, citation support rubric, and whether any separate automated claim-verification module contributed to the reported runs.}
+
+
+\section{Dataset}
+\label{sec:dataset}
+The corpus contains 75 vaccine usage-instruction PDFs collected from the Drug Administration of Vietnam public service portal on September 18, 2026. The team retrieved 123 vaccine listings. Of these, 44 had no documents, one could not be downloaded because its URL was malformed, two produced empty folders, and one contained only a label with no usage instructions. Excluding these 48 listings left 75 PDFs. Some included PDFs also contain authorization-decision or regulatory-guidance information.
+
+The team confirmed that the 75 PDFs correspond to the 75 document IDs in the current corpus. Inspection of the checked-in Parquet artifact finds 1,744 unique chunks, including 490 with the table flag set. The current Qdrant store is used for retrieval. \pending{Confirm whether that store was built from the checked-in 1,744-chunk Parquet artifact or an earlier version of it.}
+
+The main 300-question benchmark is generated using DeepEval's Synthesizer. In \artifact{scripts/generate_eval_dataset.py}, prepared chunk contexts are passed to \artifact{generate_goldens_from_contexts}, with \artifact{include_expected_output=True} and one golden requested per context group. Styling and evolution configurations control answerability, question style and reasoning complexity. DeepEval documents this interface as generating questions and expected answers from supplied contexts~\cite{deepevalcontexts}. The script constructs context pools for single-hop, multi-hop and table-reasoning questions, including multi-hop evidence from the same document or different vaccines. The saved benchmark metadata records \artifact{gpt-oss-120b} as the generation model. \pending{Confirm the final benchmark export, generation command, script revision, DeepEval version and model endpoint.}
+
+The older \artifact{testdata} module and its question-category taxonomy are legacy artifacts. The team uses the older query dataset only for unanswerable-query testing. It does not supply the main benchmark or define the current system's question categories. The checked-in \artifact{test_dataset.json} contains 460 records with 74 answerable, 164 partially answerable and 222 unanswerable labels. Its additional evaluation pass currently loads the entire file unless a filtered artifact is supplied, so the report must identify the subset actually scored for unanswerable-query testing. \pending{Confirm which file or exported subset is used for unanswerable testing, how its labels were checked and its final scored count. The team referred to test\_data.json; the checked-in filename is test\_dataset.json.}
+
+The 300-question file stores a question, expected output, context, and metadata containing evidence identifiers and question attributes. Table~\ref{tab:dataset} gives the label counts observed in \artifact{evaluation/eval_dataset_300_final_fixed.json}. Each dimension describes the same set of 300 records.
+
+\begin{table}[htbp]
+\centering
+\caption{Label distribution in the 300-question working benchmark.}
+\label{tab:dataset}
+\begin{tabular}{llr}
+\toprule
+Dimension & Label & Count\\
+\midrule
+Answerability & Answerable & 210\\
+ & Partially answerable & 90\\
+Complexity & Single-hop & 150\\
+ & Multi-hop & 90\\
+ & Table reasoning & 60\\
+Question style & Patient style & 180\\
+ & Clinical style & 120\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The corrected 300-question file changes ordered source-chunk lists for 279 records relative to the earlier file. Its goldens match those embedded in the saved generation outputs. This establishes which labels accompany the saved outputs. Expert validation of label completeness and answer support must be documented separately. The 300-question file contains answerable and partially answerable labels, so evaluation of fully unanswerable questions requires a declared additional sample.
+\pending{Provide the final adjudicated dataset export, version checksum, sampling and split procedure, overlap checks between artifacts, and the size and selection rule for any fully unanswerable subset.}
+
+
+\section{Experiments and Results}
+\label{sec:experiments}
+
+\subsection{Experimental Design}
+The study compares the six configurations in Table~\ref{tab:sequence}. Each comparison should use a frozen corpus and judgment set, the same scored questions and matched evidence budgets. Record differences intrinsic to the methods, such as using a graph traversal or multiple retrieval calls. Hold the generator, prompts and judge settings fixed for comparisons intended to isolate the effect of retrieval. Hybrid serves as the reference for extensions. Because Hybrid can change both retrieval streams and reranking, the sequence is a system-level comparison. Component effects require matched controls, such as Hybrid with reranking disabled.
+
+\begin{table}[htbp]
+\centering
+\caption{Ablation-study sequence and documented evidence paths.}
+\label{tab:sequence}
+\begin{tabularx}{\linewidth}{rlX}
+\toprule
+Order & Configuration & Evidence path\\
+\midrule
+1 & Naive & BM25 over corpus chunks.\\
+2 & Advanced & One BGE-M3 dense query against Qdrant.\\
+3 & Hybrid (baseline) & Dense and learned sparse retrieval, rank fusion and optional reranking.\\
+4 & Table-aware & \pending{Record final table representation and evidence path.}\\
+5 & Graph RAG & \pending{Record final graph construction and retrieval path.}\\
+6 & Agent RAG & \pending{Record final orchestration and tool-use path.}\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+For retrieval, Hit@$k$ indicates whether at least one labeled relevant chunk was retrieved by rank \(k\). Recall@$k$ measures the proportion of labeled evidence recovered and Precision@$k$ measures the proportion of the first \(k\) positions occupied by labeled evidence. Mean reciprocal rank rewards early retrieval of the first labeled source. Normalized discounted cumulative gain rewards placing labeled sources near the top. Alternative supporting chunks can receive no credit when the gold evidence is incomplete. Report scoring coverage and the number of rankings shorter than each cutoff.
+
+The evaluation code also supports mean average precision at a cutoff and LLM-judged answer relevancy and faithfulness, contextual relevancy, precision and recall, and a default-enabled GEval Correctness metric against the reference answer. Citation analysis should distinguish citation validity from claim support, and failure analysis should assess whether refusals and partial answers match the evidence available. The source ODT identifies user testing as an evaluation objective.
+\pending{Provide the final run manifest with code revision, index revision, checkpoint identifiers, prompts, judge settings, hardware, retrieval and context budgets, inclusion and exclusion rules, and significance or uncertainty procedure if used. Supply the human review and user-testing protocols and completed results if available.}
+
+\subsection{Results}
+The saved generation artifact holds 300 records, each with four retrieved identifiers. The recorded generation model is \artifact{gpt-oss-120b}. All labeled source IDs in the corrected benchmark and all retrieved IDs in these saved outputs occur in the current Parquet corpus. Identifier coverage alone leaves the corpus and index revision used for the saved run unresolved. The saved latency field is measured within answer generation and excludes retrieval time. This artifact provides evidence for scoring those saved rankings at cutoffs up to four. A score calculated above that depth would have missing positions and would be unsuitable as evidence for a deeper live retrieval experiment. Run metadata and comparable per-query outputs are required to attribute a result to an ablation configuration.
+
+\begin{table}[htbp]
+\centering
+\caption{Evidence required to complete the ablation results.}
+\label{tab:results}
+\begin{tabularx}{\linewidth}{lX}
+\toprule
+Configuration & Pending results\\
+\midrule
+Naive & \pending{Insert scored query count, retrieval metrics, answer and citation scores, abstention and latency from the BM25 run.}\\
+Advanced & \pending{Insert matched dense retrieval, answer and citation scores, abstention and latency.}\\
+Hybrid (baseline) & \pending{Identify the baseline run and insert matched retrieval, answer and citation scores, abstention and latency.}\\
+Table-aware & \pending{Insert verified full-set and table-slice metrics and deltas from Hybrid, including row or cell attribution and latency.}\\
+Graph RAG & \pending{Insert verified full-set and multi-hop metrics and deltas from Hybrid, including graph provenance and latency.}\\
+Agent RAG & \pending{Insert verified matched metrics and deltas from Hybrid, with call counts, failures and latency.}\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\pending{Add the final numerical results table with denominators and cutoffs and interpret only observed differences. Include per-slice results for single-hop, multi-hop, table reasoning and partial answerability, supported by saved run artifacts.}
+
+\subsection{Qualitative Assessment of Vietnamese Vaccine Answers}
+A qualitative assessment should trace the question to the ranked evidence and examine the generated response claim by claim. For product-specific questions, check whether the passage refers to the right product and formulation. For tables, check whether the evidence includes the relevant headers and any qualifying notes. For evidence distributed across sources, check whether all required passages appear and whether the answer combines them consistently. A partially answerable case should show which parts the source supports and how the response handles the remaining uncertainty.
+
+\pending{Insert reviewed examples with query IDs, variant, source titles and chunk IDs, source excerpts, actual output and assessor judgments. Include a supported answer, an evidence miss or unsupported claim, a table-dependent example and a partially answerable case. Supply reviewed Graph RAG and Agent RAG examples once the corresponding runs are available.}
+
+\section{Conclusion}
+\label{sec:conclusion}
+VaxiS applies evidence-grounded retrieval and generation to Vietnamese vaccine information. The available project materials establish an indexing path from cleaned Markdown, BM25, dense and hybrid retrieval implementations, chunk-level citation tracking, a working benchmark, and tooling for reviewing reference answers and evidence. These artifacts support evaluation of whether relevant passages are retrieved and whether the resulting answers can be checked against those passages.
+
+The central empirical question is how the six configurations compare under consistent evaluation conditions. The documented corpus and benchmark audit, a reproducible comparative run, and verification of the final three configurations are prerequisites for a comparative conclusion.
+\pending{Summarize the verified findings, cite the completed results tables, state observed failure modes and delimit the conclusions to the evaluated corpus and questions.}
+
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+
+% --- Bibliography ---
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+
+% --- Appendix ---
+\appendix
+\section*{Appendix}
+\addcontentsline{toc}{section}{Appendix}
+\label{sec:appendix}
+\setcounter{subsection}{0}
+\renewcommand{\thesubsection}{\Alph{subsection}}
+\renewcommand{\theHsubsection}{appendix.\Alph{subsection}}
+
+% ------------------------------------------------------------------
+% Appendix material: prompts, schemas, and reproducibility configs
+% (Pseudocode stages intentionally omitted.)
+% ------------------------------------------------------------------
+%\lstset{
+%    basicstyle=\ttfamily\footnotesize,
+%    breaklines=true,
+%    columns=fullflexible,
+%    frame=single,
+%    rulecolor=\color{black!20},
+%    showstringspaces=falsface
+\subsection{Source-to-Markdown Processing, Metadata Extraction, and Chunking}
+Collection is documented in \artifact{scrape_dataset/scrape_data.py}, \artifact{scrape_dataset/extract_documents.py}, and \artifact{scrape_dataset/download_documents.py}. The team used the Gemini website with its default model, uploading one trimmed PDF at a time. Table images were converted to HTML and inserted into the Markdown, followed by manual review. \pending{Provide the conversion prompt or retained session record if available.}
+The principal indexing files are \artifact{src/vacxis_capstone_fa26/indexing/parser.py}, \artifact{src/vacxis_capstone_fa26/indexing/chunker.py}, and \artifact{src/vacxis_capstone_fa26/indexing/indexer.py}. Review the original source alongside its cleaned Markdown and indexed output when checking the preservation of a table or footnote.
+\pending{Provide a representative source-to-Markdown example, Gemini conversion and cleaning settings, and the indexing command and resulting chunk metadata for the final corpus.}
+
+\subsection{Answer Generation Prompts and Output Schema}
+The generation files \artifact{src/vacxis_capstone_fa26/generation/prompts.py} and \artifact{src/vacxis_capstone_fa26/generation/generator.py} define the prompt construction and citation handling. Saved result records include the answer, valid and invalid citations, cited and retrieved IDs, a refusal flag, model, latency and usage.
+\pending{Insert the exact versioned generator prompt, context formatting, model settings and a sanitized saved response record from the final comparison.}
+
+\subsection{Graph Schema and Constraints}
+\pending{Insert the versioned Graph RAG node and edge specification, graph serialization or storage constraints, provenance fields, and a worked retrieval trace with source identifiers.}
+
+\subsection{Example Questions and Reviewed Outputs}
+\pending{Insert approved benchmark examples with expected and actual outputs, evidence IDs, and reviewer notes. Include each evaluated configuration where comparable examples are available.}
+\subsection{PDF-to-Markdown Processing, GRI-Aware Extraction, and Chunking}
+
+\paragraph{Pipeline configuration (paths and model handle):}
+\begin{lstlisting}[language=Python,caption={Module 1 pipeline configuration fields (paths and model handle).},label={lst:m1-pipeline-config}]
+PipelineConfig:
+    input_pdf: Optional[Path]
+    output_dir: Path = "./data"
+    llm_model: str = ".../Qwen3-4B-Instruct-2507"
+    gri_taxonomy_path: Path = "data/taxonomies/gri_taxonomies_by_code.json"
+
+Derived outputs:
+    split_dir:   output_dir/"1_split"/<report_name>/
+    markdown_dir:output_dir/"2_markdown"/<report_name>/
+    merged_file: output_dir/"3_merged"/<report_name>.md
+    output_json: output_dir/"4_output"/<report_name>.json
+\end{lstlisting}
+
+\paragraph{TOC extraction prompt (JSON array output):}
+\begin{lstlisting}[language=json,caption={Module 1 TOC extraction prompt (JSON array).},label={lst:m1-toc-prompt}]
+Extract the Table of Contents from the document content.
+
+Return ONLY a JSON array with the following format:
+[
+    {"title": "Section title", "page": "page number or null", "level": 1},
+    ...
+]
+
+Rules:
+- level 1 for main sections, level 2 for subsections
+- If no page number, use null
+- Extract ALL section titles from the table of contents
+
+Document content:
+<pages_content>
+\end{lstlisting}
+
+\paragraph{GRI reference table extraction prompt (JSON array output):}
+\begin{lstlisting}[language=json,caption={Module 1 GRI reference extraction prompt (JSON array).},label={lst:m1-gri-ref-prompt}]
+Extract ALL GRI references from the document content.
+
+Return ONLY a JSON array with the following format:
+[
+    {"title": "Disclosure title", "indicator": "GRI X-X", "page": "page number or null"},
+    ...
+]
+
+Rules:
+- indicator format: "GRI X-X" (e.g., "GRI 2-2", "GRI 302-1")
+- Extract ALL GRI indicators found in the document
+
+Document content:
+<pages_content>
+\end{lstlisting}
+
+\paragraph{Page-level extraction output schema (JSON):}
+\begin{lstlisting}[language=json,caption={Module 1 page-level extraction schema (sections + provenance).},label={lst:m1-page-extraction-schema}]
+{
+    "has_gri_content": true,
+    "sections": [
+        {
+            "title": "Section title",
+            "content": "Content",
+            "gri_indicator": "GRI X-X",
+            "gri_source": "content|context|reference",
+            "is_continuation": false
+        }
+    ],
+    "summary": "Brief summary"
+}
+\end{lstlisting}
+
+\paragraph{End-to-end JSON output structure and chunking metadata:}
+\begin{lstlisting}[language=json,caption={Module 1 output JSON top-level keys and chunking metadata.},label={lst:m1-output-json-schema}]
+{
+    "table_of_contents": [
+        {"title": "...", "page": "...", "level": 1}
+    ],
+    "gri_references": [
+        {"title": "...", "indicator": "GRI X-X", "page": "..."}
+    ],
+    "page_extractions": [
+        {"page": 1, "sections": [ ... ], "summary": "..."}
+    ],
+    "chunking_metadata": {
+        "max_tokens": 512,
+        "chunk_size": 200,
+        "chunk_overlap": 50,
+        "total_original_sections": 0,
+        "total_chunked_sections": 0
+    }
+}
+\end{lstlisting}
+
+\subsection{Entity Extraction Prompts and Output Schema}
+
+\paragraph{System prompt:}
+\begin{lstlisting}[language=json,caption={Module 2 system prompt (JSON-only output constraint).},label={lst:m2-system-prompt}]
+You are an expert in ESG (Environmental, Social, Governance) reporting and GRI (Global Reporting Initiative) standards.
+Your task is to extract structured information from ESG report text and align it with relevant GRI disclosure indicators.
+
+You must return valid JSON only, without any markdown formatting or explanations.
+\end{lstlisting}
+
+\paragraph{Single-chunk extraction prompt (template):}
+\begin{lstlisting}[caption={Module 2 single-chunk extraction prompt (template; placeholders shown).},label={lst:m2-single-prompt}]
+Given the following text chunk from an ESG report, extract structured information.
+
+Report Context:
+- Company: {company_name}
+- Report Type: {report_type}
+- Report Year: {report_year}
+- ESG Category: {esg_category} ({esg_category_full})
+
+Text Chunk:
+{chunk_text}
+
+Relevant GRI Standards for {esg_category} category:
+{gri_context}
+
+Task:
+1) ESG Actions: name, description
+2) Key Statements: text, importance (high/medium/low)
+3) GRI Alignments: list GRI codes from the provided list above
+
+Output Format (JSON only):
+{
+    "actions": [{"name": "...", "description": "..."}],
+    "statements": [{"text": "...", "importance": "high"}],
+    "gri_alignments": ["GRI XXX-Y"]
+}
+
+Return only valid JSON without any markdown formatting.
+\end{lstlisting}
+
+\paragraph{Batch extraction prompt (schema constraints):}
+\begin{lstlisting}[caption={Module 2 batch extraction prompt (schema constraints; shortened).},label={lst:m2-batch-prompt}]
+CRITICAL INSTRUCTIONS:
+1. Return ONLY a valid JSON array. No introduction, no markdown.
+2. The array MUST have exactly {chunk_count} objects, one per input chunk in the same order.
+3. Each object MUST have exactly these keys: chunk_id, actions, statements, gri_alignments
+4. If a chunk has no ESG content, return empty arrays.
+
+OUTPUT SCHEMA:
+[
+    {
+        "chunk_id": <number>,
+        "actions": [{"name": "<short>", "description": "<1-2 sentences>"}],
+        "statements": [{"text": "<verbatim>", "importance": "high|medium|low"}],
+        "gri_alignments": ["GRI XXX-Y"]
+    }
+]
+\end{lstlisting}
+
+\subsection{Graph JSON Schema and Neo4j Constraints}
+
+\paragraph{Graph JSON structure:}
+\begin{lstlisting}[language=json,caption={Module 2 graph JSON top-level structure (schema).},label={lst:m2-graph-json-schema}]
+{
+    "metadata": {
+        "company": "<string>",
+        "report_type": "<string>",
+        "report_year": <int>,
+        "node_count": <int>,
+        "relationship_count": <int>
+    },
+    "nodes": [
+        {"label": "Company|Report|ESG_Category|ESG_Action|ESG_Statement|GRI_Disclosure",
+         "properties": {"...": "..."}}
+    ],
+    "relationships": [
+        {"type": "HAS_REPORT|HAS_STATEMENT|BELONGS_TO_CATEGORY|CATEGORIZED_AS|BELONGS_TO_ACTION|ALIGNS_TO",
+         "from_label": "<label>", "from_id": "<id>",
+         "to_label": "<label>", "to_id": "<id>",
+         "properties": {"...": "..."}}
+    ]
+}
+\end{lstlisting}
+
+\paragraph{Uniqueness constraints (Neo4j):}
+Table~\ref{tab:edges} summarizes the relationship types used in the knowledge graph. The constraints below focus only on node-level uniqueness keys used to prevent duplicate entity creation.
+\begin{lstlisting}[caption={Module 2 Neo4j uniqueness constraints (conceptual list).},label={lst:m2-neo4j-constraints}]
+Company(company_id)
+Report(report_id)
+ESG_Statement(statement_id)
+ESG_Action(action_id)
+ESG_Category(category_id)
+GRI_Disclosure(disclosure_id)
+\end{lstlisting}
+
+To complement the prompt and schema definitions above, the following examples illustrate how the system handles real benchmark questions from retrieval to answer verification.
+
+\subsection{Example Questions and Fact-Checked Outputs}
+\label{sec:appendix_examples}
+
+This section provides three representative examples of the question-answering and fact-checking workflow across Environmental (E), Social (S), and Governance (G) topics. Each example includes the input question, generated answer, retrieved report evidence, and claim-level fact-checking results. The fact-checking examples include both supported and non-supported claims to illustrate how the verifier detects partially unsupported or incorrect statements.
+
+%% =================== Box 1 — E (ACB GHG emissions) ===================
+\begin{tcolorbox}[colback=white,colframe=black!65,boxrule=0.6pt,arc=0pt,left=8pt,right=8pt,top=8pt,bottom=8pt]
+
+\textbf{Question:} Did ACB reduce its total GHG emissions across all three scopes in 2023 compared to 2022?
+
+\textbf{Generated answer:} Yes, ACB reduced its total GHG emissions across all three scopes in 2023 compared to 2022. The total GHG emissions decreased by 9\%, from 34,355 tonnes of CO$_2$ in 2022 to 31,238 tonnes of CO$_2$ in 2023 (ACB, 2023, Page 34). This reduction is also supported by GRI Standard GRI 305-1, which pertains to direct GHG emissions.
+
+\begin{itemize}
+    \item \textbf{Claim:} ACB's total GHG emissions were 31,238 tonnes of CO$_2$ in 2023.
+    \begin{itemize}
+        \item \textbf{Label:} SUPPORTS
+        \item \textbf{Confidence:} 0.90
+        \item \textbf{Source:} \href{https://static2.vietstock.vn/vietstock/2025/3/26/20250325_acb_250325_annual_report_2025.pdf}{vietstock.vn (ACB Annual Report)}
+    \end{itemize}
+
+    \item \textbf{Claim:} ACB's total GHG emissions decreased by 9\% in 2023 compared to 2022.
+    \begin{itemize}
+        \item \textbf{Label:} NOT\_ENOUGH\_INFO
+        \item \textbf{Confidence:} 0.30
+        \item \textbf{Source:} \href{https://climate.ec.europa.eu/news-other-reads/news/climate-action-progress-report-2023-shows-largest-annual-drop-emissions-decades-2024-10-31_en}{climate.ec.europa.eu (EU Climate Action Progress Report 2023)}
+    \end{itemize}
+\end{itemize}
+
+\end{tcolorbox}
+
+
+% =================== Box 2 — S (MSB E&S risk loan assessment) ===================
+\begin{tcolorbox}[colback=white,colframe=black!65,boxrule=0.6pt,arc=0pt,left=8pt,right=8pt,top=8pt,bottom=8pt]
+
+\textbf{Question:} How many loans were assessed for Environmental and Social risks by MSB in 2024?
+
+\textbf{Generated answer:} 84,619. In 2024, MSB conducted Environmental and Social risk assessments for 84,619 loans out of a total of 134,487 loan proposal documents (MSB, 2024, Page 20). This assessment aligns with GRI Standard GRI 2-21, which pertains to the management of environmental and social risks.
+
+\begin{itemize}
+    \item \textbf{Claim:} In 2024, MSB conducted Environmental and Social risk assessments for 84,619 loans out of a total of 134,487 loan proposal documents.
+    \begin{itemize}
+        \item \textbf{Label:} NOT\_ENOUGH\_INFO
+        \item \textbf{Confidence:} 0.95
+        \item \textbf{Source:} \href{https://cmsv5.fiingroup.vn/medialib/FG/2025/2025-04/2025-04-22/20250422_MSB-250422-Annual-Report-2024.pdf}{fiingroup.vn (MSB Annual Report 2024)}
+    \end{itemize}
+\end{itemize}
+
+\end{tcolorbox}
+
+
+% =================== Box 3 — G (HDBank TCFD participation) ===================
+\begin{tcolorbox}[colback=white,colframe=black!65,boxrule=0.6pt,arc=0pt,left=8pt,right=8pt,top=8pt,bottom=8pt]
+
+\textbf{Question:} Did HDBank participate in LeapFrog's first TCFD report in 2023?
+
+\textbf{Generated answer:} Yes, HDBank participated in LeapFrog's first Task Force on Climate-related Financial Disclosures (TCFD) report in 2023. This involvement is significant for assessing climate change risks and opportunities within LeapFrog's investment portfolio (HDBank, 2023, Page 12; GRI: GRI 405-1, GRI 202-1, GRI 201-2).
+
+\begin{itemize}
+    \item \textbf{Claim:} HDBank participated in LeapFrog's first TCFD report in 2023.
+    \begin{itemize}
+        \item \textbf{Label:} SUPPORTS
+        \item \textbf{Confidence:} 0.80
+        \item \textbf{Source:} \href{https://cdn.hdbank.com.vn/hdbank-file/investor/src/bctn-2023/phat-trien-ben-vung-EN.html}{hdbank.com.vn (Sustainability Report 2023)}
+    \end{itemize}
+\end{itemize}
+
+\end{tcolorbox}
+
+
+% =================== Box 4 — E (BIDV green credit 2023) ===================
+\begin{tcolorbox}[colback=white,colframe=black!65,boxrule=0.6pt,arc=0pt,left=8pt,right=8pt,top=8pt,bottom=8pt]
+
+\textbf{Question:} What was the total outstanding balance of green credit at BIDV as of December 31, 2023 (in VND billion)?
+
+\textbf{Generated answer:} 74,177 VND billion. As of December 31, 2023, BIDV reported a total outstanding balance of green credit amounting to 74,177 VND billion, which accounted for 4.24\% of its total outstanding loans (BIDV, 2023, Page 37). This information is also supported by GRI Standard GRI 308-1, which pertains to the organization's green credit performance.
+
+\begin{itemize}
+    \item \textbf{Claim:} As of December 31, 2023, BIDV reported a total outstanding balance of green credit amounting to 74,177 VND billion.
+    \begin{itemize}
+        \item \textbf{Label:} SUPPORTS
+        \item \textbf{Confidence:} 0.95
+        \item \textbf{Source:} \href{https://www.studocu.vn/vn/document/hoc-vien-tai-chinh/tai-chinh-tien-te/bidv-annual-report-2023-fn-da-nen-da-nen-1/108663677}{studocu.vn (BIDV Annual Report 2023)}
+    \end{itemize}
+
+    \item \textbf{Claim:} As of December 31, 2023, BIDV's green credit accounted for 4.24\% of its total outstanding loans.
+    \begin{itemize}
+        \item \textbf{Label:} NOT\_ENOUGH\_INFO
+        \item \textbf{Confidence:} 0.70
+        \item \textbf{Source:} \href{https://bidv.com.vn/bidv_en/tin-tuc/tin-ve-bidv/bidv-danh-10000-ty-dong-tai-tro-cac-du-an-cong-trinh-xanh}{bidv.com.vn (Green Credit News, Mar 2024)}
+    \end{itemize}
+\end{itemize}
+
+\end{tcolorbox}
+
+
+% =================== Box 5 — E (VPBank green credit 2024) ===================
+\begin{tcolorbox}[colback=white,colframe=black!65,boxrule=0.6pt,arc=0pt,left=8pt,right=8pt,top=8pt,bottom=8pt]
+
+\textbf{Question:} What was the total outstanding balance of green credit at VPBank as of December 31, 2024 (in VND billion)?
+
+\textbf{Generated answer:} 21,943 billion VND. As of December 31, 2024, the total outstanding balance of green credit at VPBank was reported to be 21,943 billion VND, which represents a 48.5\% increase year-over-year. This information is sourced from VPBank's Sustainability Report 2024, page 23, and aligns with GRI standards GRI 3-3.
+
+\begin{itemize}
+    \item \textbf{Claim:} As of December 31, 2024, the total outstanding balance of green credit at VPBank was 21,943 billion VND.
+    \begin{itemize}
+        \item \textbf{Label:} SUPPORTS
+        \item \textbf{Confidence:} 1.00
+        \item \textbf{Source:} \href{https://static2.vietstock.vn/vietstock/2025/7/3/20250702___vpb___sustainability_report_2024.pdf}{vietstock.vn (VPBank Sustainability Report 2024)}
+    \end{itemize}
+
+    \item \textbf{Claim:} The green credit outstanding balance at VPBank increased by 48.5\% year-over-year in 2024.
+    \begin{itemize}
+        \item \textbf{Label:} SUPPORTS
+        \item \textbf{Confidence:} 0.95
+        \item \textbf{Source:} \href{https://amata.com/news-media-vietnam/93-articles-vietnam/1357-memorandum-of-understanding-between-amata-city-ha-long-and-vpbank}{amata.com (VPBank–Amata MoU)}
+    \end{itemize}
+\end{itemize}
+
+\end{tcolorbox}
+
+\end{document}
