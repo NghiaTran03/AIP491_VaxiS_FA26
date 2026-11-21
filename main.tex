@@ -450,7 +450,7 @@ Order & Configuration & Evidence path\\
 1 & Naive & BM25 over corpus chunks.\\
 2 & Advanced & One BGE-M3 dense query against Qdrant.\\
 3 & Hybrid (baseline) & Dense and learned sparse retrieval, rank fusion and optional reranking.\\
-4 & Table-aware & \pending{Record final table representation and evidence path.}\\
+4 & Table-aware & Hybrid retrieval over an index whose tables are stored as a prose summary plus the original HTML table in one chunk.\\
 5 & Graph RAG & \pending{Record final graph construction and retrieval path.}\\
 6 & Agent RAG & \pending{Record final orchestration and tool-use path.}\\
 \bottomrule
@@ -484,6 +484,48 @@ Agent RAG & \pending{Insert verified matched metrics and deltas from Hybrid, wit
 \end{table}
 
 \pending{Add the final numerical results table with denominators and cutoffs and interpret only observed differences. Include per-slice results for single-hop, multi-hop, table reasoning and partial answerability, supported by saved run artifacts.}
+
+\subsection{Retrieval Ablation Study}
+\label{sec:ir-ablation}
+We evaluate four retrieval configurations on the 300-query benchmark with binary relevance against labeled chunk identifiers and a final depth of five. All configurations score the same queries (300 scored, none excluded). Naive uses BM25 over the chunk corpus. Advanced uses one BGE-M3 dense query against Qdrant. Hybrid adds learned sparse retrieval, rank fusion and cross-encoder reranking over the original chunk index. Table-aware uses the same Hybrid retrieval over the \artifact{SUMMARIZE_DUAL} index described in the Methodology. Graph RAG and Agent RAG are not included in this ablation.
+
+\begin{table}[htbp]
+\centering
+\caption{Overall retrieval metrics on 300 queries. Best value per column in bold.}
+\label{tab:ir-overall}
+\small
+\begin{tabularx}{\linewidth}{lXXXXXXX}
+\toprule
+Configuration & Hit@1 & Hit@3 & Hit@5 & Recall@5 & MRR@5 & NDCG@5 & MAP@5\\
+\midrule
+Naive (BM25) & 0.2767 & 0.4533 & 0.5367 & 0.4733 & 0.3747 & 0.3773 & 0.3292 \\
+Advanced (dense) & 0.3067 & 0.4767 & 0.5900 & 0.5167 & 0.4064 & 0.4093 & 0.3562 \\
+Hybrid (baseline) & 0.4233 & 0.6767 & 0.7433 & 0.6817 & 0.5532 & 0.5607 & 0.5019 \\
+Table-aware & \textbf{0.4933} & \textbf{0.7300} & \textbf{0.7833} & \textbf{0.7167} & \textbf{0.6114} & \textbf{0.6122} & \textbf{0.5581} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Hit@5 and MRR@5 by question complexity (60 table-reasoning, 150 single-hop and 90 multi-hop queries). Best value per column in bold.}
+\label{tab:ir-complexity}
+\small
+\begin{tabularx}{\linewidth}{lXXXXXX}
+\toprule
+ & \multicolumn{3}{c}{Hit@5} & \multicolumn{3}{c}{MRR@5}\\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Configuration & Table & Single & Multi & Table & Single & Multi\\
+\midrule
+Naive (BM25) & 0.3000 & 0.6200 & 0.5556 & 0.1775 & 0.4548 & 0.3728 \\
+Advanced (dense) & 0.4000 & 0.6267 & 0.6556 & 0.2189 & 0.4583 & 0.4448 \\
+Hybrid (baseline) & 0.5833 & \textbf{0.8133} & 0.7333 & 0.3044 & \textbf{0.6392} & 0.5756 \\
+Table-aware & \textbf{0.7667} & 0.8067 & \textbf{0.7556} & \textbf{0.5972} & 0.6343 & \textbf{0.5826} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\pending{Interpret Tables~\ref{tab:ir-overall} and~\ref{tab:ir-complexity} after the run manifest is confirmed, and state the retrieval stream and reranking controls that isolate the Hybrid gains.}
 
 \subsection{Qualitative Assessment of Vietnamese Vaccine Answers}
 A qualitative assessment should trace the question to the ranked evidence and examine the generated response claim by claim. For product-specific questions, check whether the passage refers to the right product and formulation. For tables, check whether the evidence includes the relevant headers and any qualifying notes. For evidence distributed across sources, check whether all required passages appear and whether the answer combines them consistently. A partially answerable case should show which parts the source supports and how the response handles the remaining uncertainty.
