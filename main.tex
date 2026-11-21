@@ -282,9 +282,21 @@ Hybrid queries the BGE-M3 dense and learned sparse indexes. The implementation a
 \]
 where \(L_i\) is a candidate ranking, \(w_i\) its weight and \(c\) a smoothing constant. Hybrid uses the \artifact{BAAI/bge-m3} embedding checkpoint and the \artifact{BAAI/bge-reranker-v2-m3} cross-encoder reranker. The current configuration defaults to 50 candidates from each stream, a fusion constant of 60, 30 fused candidates, a final depth of five and enabled reranking. These are code defaults, and the experiment manifest must establish the settings actually used. The run record must identify the candidate depths, fusion settings, reranker checkpoint and final evidence depth.
 
-Table-aware is the fourth configuration and is intended to measure retrieval and grounding on questions that depend on tabular structure.
-\pending{Provide the Table-aware implementation path and commit, table and cell representation, preservation of headers and footnotes, retrieval and reranking changes, and source attribution behavior. State exactly how it differs from the shared chunker and Hybrid.}
-\pending{Provide the Table-aware run configuration, table-dependent subset definition, per-query outputs, retrieval and answer metrics, and an audited row or footnote error example.}
+Table-aware is the fourth configuration and is intended to measure retrieval and grounding on questions that depend on tabular structure. It keeps the Hybrid retrieval pipeline (BGE-M3 dense and sparse indexes, weighted reciprocal rank fusion and cross-encoder reranking) and changes how tabular evidence is indexed and surfaced. The shared chunker may split one table across several chunks, which separates rows from their column headers and footnotes. Table-aware therefore adds a preprocessing step before embedding and a merge step after fusion.
+
+\paragraph{Index-time table preprocessing.}
+Chunks flagged as tables are grouped when consecutive chunks of the same document share the same section header. Their HTML or Markdown fragments are merged into one table, and rows duplicated at chunk boundaries by the chunk overlap are removed. The identifiers of the merged chunks are stored in the chunk metadata so that evidence remains traceable to the original chunks.
+
+Each merged table is then classified as \artifact{CLINICAL} or \artifact{STATISTICAL}. Clinical tables cover composition, dosage, schedule, adverse reactions, contraindications and storage. Statistical tables cover immunogenicity and efficacy results. The classifier checks keywords in the section header and table head, then the share of numeric cells (statistical at 0.45 or above), then the document category, and finally a 0.35 numeric-ratio threshold.
+
+The language model \artifact{gpt-oss-120b} rewrites each table as Vietnamese prose, using a prompt chosen by table kind. Clinical tables are rewritten row by row, preserving every row, column, dose, frequency and footnote and naming the vaccine in each sentence. Statistical tables are summarized as one overview paragraph that names the study and control vaccines, age groups, pathogens or serotypes, and measures such as GMT, GMC and protective efficacy, without listing every number. Summaries are cached by a SHA-256 key over the document, header, table kind, model and merged table text. On a cache miss without LLM fallback, the merged table text is used alone.
+
+Table-aware uses the \artifact{SUMMARIZE_DUAL} strategy by default. The prose summary and the original merged HTML table are stored together in a single chunk. The dense representation of this chunk benefits from the semantic summary, which improves matching with natural-language questions, while the sparse lexical representation can match exact terms and values from the original table. The generator receives the same chunk, so exact cell values remain available for answering.
+
+\paragraph{Query-time table merging.}
+The Table-aware configuration enables table chunk merging at query time. Retrieved table chunks that share a document and section header are merged after fusion and before reranking, and overlapping rows are removed. The merged chunk records its source chunk identifiers, so citations can still be mapped to the original chunks.
+
+\pending{Provide the Table-aware implementation commit, the table-dependent query subset and its size, the run configuration, per-query outputs, retrieval and answer metrics, and an audited row or footnote error example.}
 
 For Graph RAG, the retrieval component must specify how a question is associated with graph entities, how candidate paths are selected, and how their supporting passages enter the generator.
 \pending{Provide the actual Graph RAG retrieval algorithm, graph search parameters, evidence ordering, and fallback behavior.}
