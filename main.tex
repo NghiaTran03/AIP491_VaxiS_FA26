@@ -550,26 +550,51 @@ The evaluation code also supports mean average precision at a cutoff and LLM-jud
 \pending{Provide the final run manifest with code revision, index revision, checkpoint identifiers, prompts, judge settings, hardware, retrieval and context budgets, inclusion and exclusion rules, and significance or uncertainty procedure if used. Supply the human review and user-testing protocols and completed results if available.}
 
 \subsection{Results}
-The saved generation artifact holds 300 records, each with four retrieved identifiers. The recorded generation model is \artifact{gpt-oss-120b}. All labeled source IDs in the corrected benchmark and all retrieved IDs in these saved outputs occur in the current Parquet corpus. Identifier coverage alone leaves the corpus and index revision used for the saved run unresolved. The saved latency field is measured within answer generation and excludes retrieval time. This artifact provides evidence for scoring those saved rankings at cutoffs up to four. A score calculated above that depth would have missing positions and would be unsuitable as evidence for a deeper live retrieval experiment. Run metadata and comparable per-query outputs are required to attribute a result to an ablation configuration.
+The committed DeepEval reports contain end-to-end answer-quality scores for Hybrid, Table-aware, and Table-aware + LightRAG on the 300-query benchmark. The retrieval-only ablation results are reported separately in Section~\ref{sec:ir-ablation}; those scores use the corrected 300-query benchmark and rank-preserving aliases for consolidated tables. In the DeepEval reports, answer-quality metrics cover all 300 queries, while retrieval metrics cover the 288 queries with labeled supporting chunks (the 12 unanswerable items are excluded). Table~\ref{tab:rag-quality} summarizes the reported answer-quality measures. The committed result summaries do not report citation-support scores or end-to-end retrieval-plus-generation latency, so neither is inferred here. Comparable end-to-end DeepEval reports for Naive (BM25) and Advanced (dense-only) were not present in the committed evaluation artifacts.
 
 \begin{table}[htbp]
 \centering
-\caption{Evidence required to complete the ablation results.}
-\label{tab:results}
-\begin{tabularx}{\linewidth}{lX}
+\caption{End-to-end RAG evaluation on the 300-query benchmark. Scores are means; higher is better.}
+\label{tab:rag-quality}
+\small
+\begin{tabularx}{\linewidth}{l*{6}{>{\centering\arraybackslash}X}}
 \toprule
-Configuration & Pending results\\
+Configuration & $n$ & Answer relevancy & Faithfulness & Contextual precision & Contextual recall & Jev correctness\\
 \midrule
-Naive & \pending{Insert scored query count, retrieval metrics, answer and citation scores, abstention and latency from the BM25 run.}\\
-Advanced & \pending{Insert matched dense retrieval, answer and citation scores, abstention and latency.}\\
-Hybrid (baseline) & \pending{Identify the baseline run and insert matched retrieval, answer and citation scores, abstention and latency.}\\
-Table-aware & \pending{Insert verified full-set and table-slice metrics and deltas from Hybrid, including row or cell attribution and latency.}\\
-Graph RAG & \pending{Insert verified full-set and multi-hop metrics and deltas from Hybrid, including graph provenance and latency.}\\
+Hybrid (baseline) & 300 & 0.7716 & 0.7247 & 0.5619 & 0.5443 & 0.6325\\
+Table-aware & 300 & 0.7724 & 0.7071 & 0.5743 & 0.5682 & 0.6276\\
+Graph RAG (Table-aware + LightRAG) & 300 & 0.7819 & 0.6777 & 0.5762 & 0.5753 & 0.6360\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\pending{Add the final numerical results table with denominators and cutoffs and interpret only observed differences. Include per-slice results for single-hop, multi-hop, table reasoning and partial answerability, supported by saved run artifacts.}
+Across the three reported runs, Graph RAG has the highest mean answer relevancy ($0.7819$), contextual precision ($0.5762$), contextual recall ($0.5753$), and Jev correctness ($0.6360$). Hybrid has the highest faithfulness score ($0.7247$); the corresponding Table-aware and Graph RAG scores are $0.7071$ and $0.6777$. These are descriptive differences between the committed runs, without a reported uncertainty or significance analysis. The reports also give a \texttt{refusal\_correctness} score of $0.6067$ for Hybrid, $0.5300$ for Table-aware, and $0.5633$ for Graph RAG across the full benchmark; this judge score is not the same as an explicit refusal rate.
+
+Table~\ref{tab:rag-slices} reports answer-quality scores by reasoning complexity. Each row uses the slice count shown; retrieval scores by complexity are presented in Table~\ref{tab:ir-complexity}. Graph RAG has the highest reported answer relevancy for multi-hop and table-reasoning questions; Hybrid scores slightly higher for single-hop questions. Graph RAG faithfulness is lower than Hybrid in all three slices, while its Jev correctness is slightly lower for multi-hop questions and higher for single-hop and table-reasoning questions.
+
+\begin{table}[htbp]
+\centering
+\caption{End-to-end answer-quality scores by reasoning complexity.}
+\label{tab:rag-slices}
+\small
+\begin{tabularx}{\linewidth}{llrrr}
+\toprule
+Configuration & Slice ($n$) & Answer relevancy & Faithfulness & Jev correctness\\
+\midrule
+Hybrid & Single-hop (150) & 0.8002 & 0.7506 & 0.6936\\
+Hybrid & Multi-hop (90) & 0.7686 & 0.7045 & 0.5635\\
+Hybrid & Table reasoning (60) & 0.7048 & 0.6904 & 0.5831\\
+Table-aware & Single-hop (150) & 0.7914 & 0.7248 & 0.6730\\
+Table-aware & Multi-hop (90) & 0.7722 & 0.6910 & 0.5485\\
+Table-aware & Table reasoning (60) & 0.7252 & 0.6869 & 0.6329\\
+Graph RAG & Single-hop (150) & 0.7986 & 0.7032 & 0.6803\\
+Graph RAG & Multi-hop (90) & 0.7845 & 0.6350 & 0.5527\\
+Graph RAG & Table reasoning (60) & 0.7362 & 0.6778 & 0.6501\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+On the separate 100-query auxiliary unanswerable set, Hybrid scored $0.5900$ and Graph RAG scored $0.7000$ on \texttt{refusal\_correctness}; their mean Jev correctness scores were $0.7355$ and $0.7290$, respectively. These results indicate that the higher refusal-correctness score for Graph RAG was accompanied by a slightly lower mean correctness score on this auxiliary set. The committed Table-aware + LightRAG report supplies the Graph RAG result; the available Hybrid report supplies its baseline.
 
 \subsection{Retrieval Ablation Study}
 \label{sec:ir-ablation}
