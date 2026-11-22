@@ -234,7 +234,7 @@ K-Bot provides culturally tailored HPV vaccine information in Korean and English
 \subsection{Evidence-Grounded Question Answering over Vaccine Documents}
 BM25 uses corpus statistics and document length to score lexical matches~\cite{robertson2009bm25}. Dense retrieval instead ranks passages through similarity in an embedding space. BGE-M3 provides both dense representations and learned sparse lexical weights in a multilingual encoder~\cite{chen2024m3}. Reciprocal rank fusion combines the positions assigned by multiple retrieval streams on a common scale~\cite{cormack2009rrf}.
 
-Evidence can also cross representational boundaries. HybridQA studies questions that require combining tables with associated passages~\cite{chen2020hybridqa}. Graph RAG research illustrates how entities and relationships extracted from documents can organize evidence for a query~\cite{edge2024graphrag}. ReAct illustrates how a language model can interleave decisions with actions that gather information~\cite{yao2023react}. These works motivate candidate extensions to the VaxiS pipeline. The specific designs and empirical effects of those extensions require project implementation records and completed runs.
+Evidence can also cross representational boundaries. HybridQA studies questions that require combining tables with associated passages~\cite{chen2020hybridqa}. Graph RAG research illustrates how entities and relationships extracted from documents can organize distributed evidence for a query, ranging from hierarchical community summarization~\cite{edge2024graphrag} to dual-level graph indexing that pairs low-level entity grounding with high-level relational neighborhood traversal~\cite{guo2024lightrag}. ReAct illustrates how a language model can interleave decisions with actions that gather information~\cite{yao2023react}. These works motivate candidate extensions to the VaxiS pipeline. The specific designs and empirical effects of those extensions require project implementation records and completed runs.
 
 \section{Methodology}
 
@@ -269,9 +269,70 @@ The design must preserve provenance when chunk boundaries are changed. A questio
 \pending{Provide the conversion prompt if retained, the conversion dates, and any recorded details of the manual review procedure. The exact Gemini model version remains unspecified unless a contemporaneous record is available.}
 
 \subsection{Vaccine Knowledge Graph Module}
-Graph RAG is the fifth configuration in the study. Its purpose is to test whether graph-structured evidence helps retrieve information distributed across passages. A reproducible specification requires the graph schema, the extraction and entity resolution rules, and the links from graph facts to source evidence.
-\pending{Provide the Graph RAG implementation path and commit, node and edge schema, entity normalization and extraction procedure, storage backend, graph coverage and counts, and provenance strategy. Attach a verified graph example.}
-\pending{Provide the graph-specific evaluation slice, comparison configuration, run artifacts, metrics and observed failure cases.}
+\label{subsec:kg_module}
+Graph RAG constitutes the fifth configuration in the experimental sequence. Whereas lexical and dense vector retrievers score passages as isolated textual units, clinical immunization inquiries frequently require connecting evidence distributed across non-adjacent sections of a package insert—such as linking a residual excipient listed under qualitative composition to a hypersensitivity warning under contraindications—or comparing pharmacological profiles across distinct vaccine products. To model these cross-passage dependencies explicitly, we construct a domain-specific biomedical knowledge graph following the dual-level graph indexing paradigm of LightRAG~\cite{guo2024lightrag}.
+
+\paragraph{Structure-preserving pre-chunked ingestion.}
+Conventional graph construction pipelines re-segment raw documents into uniform token windows, which severs provenance alignment with the passage index and fragments multi-column clinical tables. To preserve strict structural correspondence with the document corpus, the knowledge graph ingestion pipeline operates directly over the pre-partitioned corpus chunks rather than re-splitting raw document text. Prior to entity extraction, consecutive table-bearing sub-chunks belonging to the same document and section heading are merged and deduplicated at boundary rows. Across the 75 vaccine usage leaflets, this consolidation collapses the 490 table-bearing sub-chunks into 238 complete tables (classified into 92 clinical guidance tables and 146 statistical immunogenicity tables), reducing the 1,744 raw corpus chunks to 1,492 consolidated text and table units. Because raw HTML markup and dense numerical matrices degrade named-entity recognition, each consolidated table is transformed into entity-rich Vietnamese Subject--Verb--Object prose prior to graph extraction—preserving exhaustive row-level clinical rules for clinical tables and study-level comparative summaries for statistical trial tables.
+
+\paragraph{Clinical entity ontology and graph extraction.}
+Entity and relationship extraction is governed by a domain-specific ontology of twelve clinical immunization categories designed for Vietnamese regulatory leaflets (Table~\ref{tab:kg_ontology}). Given each consolidated passage or verbalized table, an instruction-tuned language model extracts typed entity vertices $v = (e_v, \tau_v, d_v)$ and directed relational edges $r_{uv} = (u, v, \mathcal{K}_{uv}, d_{uv}, w_{uv})$ under strict JSON schema constraints, where $e_v$ denotes the canonical Vietnamese surface form, $\tau_v$ is the assigned clinical ontology class, $d_v$ and $d_{uv}$ are synthesized Vietnamese clinical descriptions, $\mathcal{K}_{uv}$ is a set of relational keywords, and $w_{uv} \in \mathbb{R}^+$ denotes edge weight. During incremental graph construction, entity mentions sharing a normalized canonical name across different passages are resolved into a single vertex by concatenating their clinical descriptions and accumulating their documentary provenance pointers. Across all 75 vaccine leaflets (1,492 consolidated chunks), the resulting knowledge graph comprises 3,572 unique entity vertices and 1,830 directed relational edges. Of these, 831 entity vertices (23.26\%) and 81 relational edges (4.43\%) aggregate evidence from two or more distinct source chunks, establishing multi-passage and cross-vaccine connectivity hubs around core products and shared clinical concepts (for example, \emph{Prevenar~13} with degree 91, \emph{Qdenga} with degree 45, and \emph{Nimenrix} and \emph{Varilrix} with degree 43 each).
+
+\begin{table}[htbp]
+\centering
+\caption{Biomedical entity ontology and vertex distribution across the constructed vaccine knowledge graph ($3,572$ vertices and $1,830$ directed edges across $75$ vaccine leaflets).}
+\label{tab:kg_ontology}
+\small
+\begin{tabularx}{\linewidth}{lXr}
+\toprule
+Ontology Class & Clinical Scope in Vietnamese Vaccine Leaflets & Vertices (\%)\\
+\midrule
+Target Population & Age cohorts, gestational windows, high-risk or immunocompromised groups & 444 (12.43)\\
+Ingredient & Antigens, toxoids, viral strains, adjuvants (e.g., $\text{AS01}_{\text{B}}$), excipients, residues & 435 (12.18)\\
+Vaccine & Commercial product names and proprietary formulations (e.g., Shingrix, Bexsero) & 377 (10.55)\\
+Adverse Reaction & Solicited local/systemic reactions and post-marketing adverse events & 325 (9.10)\\
+Pathogen & Target viruses, bacteria, and specific serotypes or serogroups & 272 (7.61)\\
+Dosage and Route & Dose volumes, anatomical injection sites, primary and booster schedules & 148 (4.14)\\
+Contraindication & Hypersensitivity conditions and medical exclusions to immunization & 108 (3.02)\\
+Indication & Prophylactic clinical indications and target diseases or syndromes & 79 (2.21)\\
+Drug Interaction & Concomitant vaccines, immunosuppressants, and immunoglobulin interactions & 63 (1.76)\\
+Clinical Outcome & Seroprotection rates, geometric mean titers (GMT/GMC), vaccine efficacy & 47 (1.32)\\
+Precaution & Pre-vaccination screening and post-vaccination clinical monitoring rules & 38 (1.06)\\
+Storage Condition & Cold-chain temperature ranges ($2\text{--}8\,^\circ\text{C}$), shelf life, reconstitution limits & 32 (0.90)\\
+Other / Unclassified & Auxiliary clinical concepts, trial cohorts, and open-domain descriptors & 1,204 (33.71)\\
+\midrule
+\textbf{Total Entities} & \textbf{Across 75 leaflets and 1,492 consolidated chunks (1,830 directed edges)} & \textbf{3,572 (100.00)}\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Dual-database storage and unified embedding space.}
+The extracted knowledge graph is maintained in a synchronized dual-storage architecture that pairs a relational property-graph engine with a multi-granular dense vector store:
+\begin{enumerate}
+\item \textbf{Topological property graph (Neo4j):} Stores the 3,572 entity vertices (indexed by B-tree and full-text search over canonical entity identifiers) and the 1,830 directed edges carrying relational keywords, synthesized descriptions, edge weights, and source chunk pointers.
+\item \textbf{Multi-granular semantic vector index (Qdrant):} Indexes dense vector representations across three parallel collections covering the 1,492 consolidated text chunks, the 3,572 entity descriptions, and the 1,830 relational triplets, using cosine similarity with a minimum retrieval threshold of $0.2$.
+\end{enumerate}
+To prevent representation drift between passage retrieval and graph retrieval while conserving accelerator memory, all three graph vector collections are encoded into the exact same $1,024$-dimensional multilingual embedding space (BGE-M3, maximum sequence length $8,192$) used by the primary hybrid passage index. During inference, a thread-safe shared encoder architecture allows both the passage retriever and the knowledge-graph retriever to execute against a single in-memory embedding model instance.
+
+\paragraph{Deterministic provenance alignment and verified subgraph example.}
+Because the graph indexing engine assigns internal content hashes to ingested text segments while tracking only each segment's parent document identifier and sequential position, direct citation requires a reverse provenance transformation. By replaying the deterministic document-level sorting and table-consolidation order over the canonical corpus store, every internal graph segment pointer $(\text{document}, \text{order index})$ is mapped bijectively back to its canonical corpus chunk identifier—as well as the list of constituent sub-chunk identifiers for merged tables. Across the entire corpus, this reverse mapping achieves $100\%$ resolution ($1,492/1,492$ segments). Table~\ref{tab:kg_verified_example} presents a verified subgraph extracted from the property graph for the recombinant herpes zoster vaccine \emph{Shingrix}, illustrating how entity descriptions and directed relational triplets trace back to canonical corpus chunks.
+
+\begin{table}[htbp]
+\centering
+\caption{Verified knowledge-graph subgraph excerpt for \emph{Shingrix} with resolved documentary provenance.}
+\label{tab:kg_verified_example}
+\small
+\begin{tabularx}{\linewidth}{llXl}
+\toprule
+Element & Vertex / Directed Edge & Extracted Vietnamese Clinical Attribute (Description and Keywords) & Resolved Provenance\\
+\midrule
+Vertex & \vn{Shingrix} (Vaccine) & \emph{\vn{``Shingrix là vắc-xin tái tổ hợp (recombinant) ngừa zona (herpes zoster) và các biến chứng nghiêm trọng như đau dây thần kinh sau zona (PHN) dành cho người lớn...''}} (Aggregated across 28 chunks) & \texttt{shingrix\_...\_c\_0000}--\texttt{c\_0032}\\
+Edge & \vn{Glycoprotein E} $\rightarrow$ \vn{Shingrix} & Keywords: \emph{\vn{cấu thành, kháng nguyên}}. Description: \emph{\vn{``Vắc xin Shingrix chứa kháng nguyên Glycoprotein E làm thành phần chính.''}} & \texttt{shingrix\_...\_c\_0000}\\
+Edge & \vn{AS01B} $\rightarrow$ \vn{Shingrix} & Keywords: \emph{\vn{adjuvant, bổ trợ, tăng cường miễn dịch}}. Description: \emph{\vn{``Shingrix sử dụng hệ thống bổ trợ AS01B để tăng cường đáp ứng miễn dịch.''}} & \texttt{shingrix\_...\_c\_0000}, \texttt{c\_0032}\\
+Edge & \vn{Shingrix} $\rightarrow$ \vn{vắc xin cúm mùa không có chất bổ trợ} & Keywords: \emph{\vn{tiêm đồng thời}}. Description: \emph{\vn{``Shingrix có thể được tiêm đồng thời với vắc xin cúm mùa không có chất bổ trợ.''}} & \texttt{shingrix\_...\_c\_0006}\\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \subsection{Retrieval-Augmented Generation Module}
 Naive uses the repository's BM25 retrieval path over the chunk corpus. The evaluation CLI selects it with \artifact{--baseline}. Hybrid is the study baseline against which subsequent extensions are compared. Advanced embeds the original query with BGE-M3 and searches the dense Qdrant index before passing the top-ranked chunks to the shared generator.
@@ -298,8 +359,25 @@ The Table-aware configuration enables table chunk merging at query time. Retriev
 
 \pending{Provide the Table-aware implementation commit, the table-dependent query subset and its size, the run configuration, per-query outputs, retrieval and answer metrics, and an audited row or footnote error example.}
 
-For Graph RAG, the retrieval component must specify how a question is associated with graph entities, how candidate paths are selected, and how their supporting passages enter the generator.
-\pending{Provide the actual Graph RAG retrieval algorithm, graph search parameters, evidence ordering, and fallback behavior.}
+\paragraph{Graph-augmented retrieval and hybrid rank fusion.}
+In the Graph RAG configuration, retrieval combines dual-level knowledge-graph traversal with the table-aware hybrid passage retriever rather than relying on the graph engine to generate unverified free-text answers. Given a Vietnamese clinical question $q$, an instruction-tuned language model (Qwen2.5-7B-Instruct) decomposes the inquiry into low-level entity keywords (specific vaccine names, antigens, or age groups) and high-level relational themes (cross-vaccine comparisons, contraindication mechanisms, or concomitant schedules). These keywords are embedded with the shared BGE-M3 encoder to drive a dual-level retrieval process over the knowledge graph:
+\begin{enumerate}
+\item \emph{Low-level entity-centric retrieval} queries the entity vector collection for the top $K_g = 20$ matching vertices and traverses their one-hop incident edges in the Neo4j property graph to gather local neighborhood attributes.
+\item \emph{High-level relationship-centric retrieval} queries the relationship vector collection for the top $K_g = 20$ relational triplets and retrieves their connected endpoint vertices to capture broader thematic associations.
+\item \emph{Provenance passage selection and token budgeting} prunes the retrieved entity descriptions and relational statements under independent context budgets ($1,500$ tokens for entities and $1,500$ tokens for relationships) and selects up to $K_c = 5$ supporting documentary chunks traced from the provenance pointers of the activated subgraph elements.
+\end{enumerate}
+
+The graph retrieval branch emits two distinct evidence structures: (a) a ranked list of up to $K_c = 5$ provenance-resolved documentary chunks $L_{\text{KG}}$, where each segment is mapped back to its canonical corpus chunk identifier and assigned a reciprocal rank score; and (b) a structured Vietnamese knowledge-graph context block summarizing the matched entities (\emph{\vn{Thực thể liên quan}}) and directed relational triplets (\emph{\vn{Mối quan hệ}}).
+
+To integrate these graph outputs with the table-aware hybrid retriever, the system supports two fusion strategies:
+\begin{itemize}
+\item \textbf{Context-Append Fusion:} Retains the top-$k$ ($k=5$) passages selected by the table-aware hybrid retriever and cross-encoder reranker unchanged, and appends the structured knowledge-graph context block as an auxiliary $(k+1)$-th reference block for the generator.
+\item \textbf{Alias-Aware Reciprocal Rank Fusion and Reranking:} Combines the top $K_{\text{rrf}} = 30$ pre-reranked candidate passages $L_{\text{hyb}}$ from the table-aware hybrid stream with the $K_c = 5$ provenance-resolved passages $L_{\text{KG}}$ from the knowledge-graph stream prior to cross-encoder reranking. Because a passage surfaced through graph provenance may correspond to an individual sub-chunk within a consolidated multi-chunk table in $L_{\text{hyb}}$, the fusion operator maps every constituent sub-chunk identifier to its canonical merged table identifier $d^* \in \mathrm{Aliases}(d^*)$ and computes an alias-aware cross-branch Reciprocal Rank Fusion score ($c = 60$):
+\[
+S_{\text{GraphRRF}}(d^*) = \frac{\mathbb{I}[d^* \in L_{\text{hyb}}]}{c + \mathrm{rank}_{\text{hyb}}(d^*)} + \frac{\mathbb{I}[\exists\, d \in \mathrm{Aliases}(d^*): d \in L_{\text{KG}}]}{c + \mathrm{rank}_{\text{KG}}(d)}.
+\]
+Whenever a graph-traced passage matches a candidate in $L_{\text{hyb}}$, the dual table-aware payload (prose summary paired with the complete HTML table) is preserved and receives the combined RRF boost. The unified candidate pool is then re-ordered by the cross-encoder reranker (BGE-Reranker-v2-M3) to select the final top-$k$ ($k=5$) documentary chunks, after which the structured knowledge-graph summary block is appended at position $k+1$. If no graph entities or relationships exceed the similarity threshold, the structured graph block is omitted and the pipeline falls back gracefully to the top-$k$ reranked documentary chunks.
+\end{itemize}
 
 Agent RAG is the sixth configuration and is intended to evaluate tool-mediated evidence gathering across retrieval steps.
 \pending{Provide the Agent RAG implementation path and commit, model, available tools, routing and stopping logic, evidence aggregation and citation rules, call budget, fallback behavior, and an example trace.}
@@ -350,7 +428,7 @@ Vietnamese Category Label & Clinical Domain (English) & Chunks & Share (\%)\\
 \end{tabular}
 \end{table}
 
-As shown in Table~\ref{tab:corpus_categories}, pharmacodynamics and immunogenicity (\vntt{dược lực học}) and adverse reactions (\vntt{tác dụng không mong muốn}) account for over 43\% of all chunks. Because clinical trial outcomes and adverse-event frequencies are frequently formatted as multi-column tables that exceed the 600-token chunking budget, the baseline chunker splits large tables across consecutive sub-chunks while repeating column headers. In the raw indexing configuration, all 1,744 chunks are indexed directly into the baseline vector collection. In contrast, the table-aware indexing pipeline merges consecutive split table chunks sharing the same \texttt{(doc\_id, header)} pair and deduplicates overlapping boundary rows. This consolidation collapses the 490 table-bearing sub-chunks into 212 complete tables—classified automatically into 143 clinical guidance tables and 69 statistical immunogenicity tables—reducing the indexed vector collection from 1,744 to 1,466 points while retaining all constituent sub-chunk identifiers in chunk metadata for provenance alignment.
+As shown in Table~\ref{tab:corpus_categories}, pharmacodynamics and immunogenicity (\vntt{dược lực học}) and adverse reactions (\vntt{tác dụng không mong muốn}) account for over 43\% of all chunks. Because clinical trial outcomes and adverse-event frequencies are frequently formatted as multi-column tables that exceed the 600-token chunking budget, the baseline chunker splits large tables across consecutive sub-chunks while repeating column headers. In the raw indexing configuration, all 1,744 chunks are indexed directly into the baseline vector collection. In contrast, the table-aware indexing pipeline merges consecutive split table chunks sharing the same \texttt{(doc\_id, header)} pair and deduplicates overlapping boundary rows. This consolidation collapses the 490 table-bearing sub-chunks into 238 complete tables—classified automatically into 92 clinical guidance tables and 146 statistical immunogenicity tables—reducing the indexed vector collection from 1,744 to 1,492 points while retaining all constituent sub-chunk identifiers in chunk metadata for provenance alignment.
 
 \subsection{Stratified 300-Query Benchmark Construction}
 \label{subsec:benchmark_construction}
@@ -451,7 +529,7 @@ Order & Configuration & Evidence path\\
 2 & Advanced & One BGE-M3 dense query against Qdrant.\\
 3 & Hybrid (baseline) & Dense and learned sparse retrieval, rank fusion and optional reranking.\\
 4 & Table-aware & Hybrid retrieval over an index whose tables are stored as a prose summary plus the original HTML table in one chunk.\\
-5 & Graph RAG & \pending{Record final graph construction and retrieval path.}\\
+5 & Graph RAG & Table-aware hybrid retrieval fused via alias-aware RRF and cross-encoder reranking with dual-level knowledge-graph retrieval (Neo4j and Qdrant), supplemented by a structured entity-relationship context block.\\
 6 & Agent RAG & \pending{Record final orchestration and tool-use path.}\\
 \bottomrule
 \end{tabularx}
@@ -487,11 +565,13 @@ Agent RAG & \pending{Insert verified matched metrics and deltas from Hybrid, wit
 
 \subsection{Retrieval Ablation Study}
 \label{sec:ir-ablation}
-We evaluate four retrieval configurations on the 300-query benchmark with binary relevance against labeled chunk identifiers and a final depth of five. All configurations score the same queries (300 scored, none excluded). Naive uses BM25 over the chunk corpus. Advanced uses one BGE-M3 dense query against Qdrant. Hybrid adds learned sparse retrieval, rank fusion and cross-encoder reranking over the original chunk index. Table-aware uses the same Hybrid retrieval over the \artifact{SUMMARIZE_DUAL} index described in the Methodology. Graph RAG and Agent RAG are not included in this ablation.
+We evaluate five retrieval configurations on the 300-query benchmark under binary relevance against ground-truth chunk identifiers at a final documentary cutoff of $k=5$. All configurations evaluate the exact same 300 queries with zero exclusions. Naive applies lexical BM25 over the raw chunk corpus ($1,744$ chunks). Advanced executes a single BGE-M3 dense vector search against Qdrant. Hybrid combines BGE-M3 dense and learned sparse retrieval via weighted reciprocal rank fusion followed by cross-encoder reranking over the raw chunk index. Table-aware applies the same hybrid retrieval and reranking pipeline over the consolidated dual-representation index ($1,492$ points, containing $238$ merged tables paired with Vietnamese prose summaries). Graph RAG fuses candidates from the table-aware hybrid stream with provenance-resolved passages from the LightRAG knowledge graph via alias-aware reciprocal rank fusion before cross-encoder reranking, and appends the structured entity-relationship subgraph context for answer generation.
+
+To ensure fair chunk-level comparison across raw and table-consolidated indexes, deterministic IR evaluation incorporates rank-preserving alias matching: whenever a consolidated table chunk is retrieved at rank $r$, any ground-truth sub-chunk identifier absorbed into that table during index-time merging is credited at rank $r$ without inflating precision denominators. Furthermore, for Graph RAG, the auxiliary knowledge-graph summary block (generated for $297$ of $300$ live retrieval queries and $300$ of $300$ end-to-end generation queries) is excluded from documentary chunk-level IR scoring so that all five methods are evaluated strictly on their top-$5$ documentary passages. Agent RAG is not included in this retrieval-only ablation.
 
 \begin{table}[htbp]
 \centering
-\caption{Overall retrieval metrics on 300 queries. Best value per column in bold.}
+\caption{Overall retrieval metrics on the 300-query benchmark ($k=5$). Best value per column in bold.}
 \label{tab:ir-overall}
 \small
 \begin{tabularx}{\linewidth}{lXXXXXXX}
@@ -502,13 +582,14 @@ Naive (BM25) & 0.2767 & 0.4533 & 0.5367 & 0.4733 & 0.3747 & 0.3773 & 0.3292 \\
 Advanced (dense) & 0.3067 & 0.4767 & 0.5900 & 0.5167 & 0.4064 & 0.4093 & 0.3562 \\
 Hybrid (baseline) & 0.4233 & 0.6767 & 0.7433 & 0.6817 & 0.5532 & 0.5607 & 0.5019 \\
 Table-aware & \textbf{0.4933} & \textbf{0.7300} & \textbf{0.7833} & \textbf{0.7167} & \textbf{0.6114} & \textbf{0.6122} & \textbf{0.5581} \\
+Graph RAG & \textbf{0.4933} & \textbf{0.7300} & \textbf{0.7833} & \textbf{0.7167} & 0.6108 & 0.6115 & 0.5570 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \begin{table}[htbp]
 \centering
-\caption{Hit@5 and MRR@5 by question complexity (60 table-reasoning, 150 single-hop and 90 multi-hop queries). Best value per column in bold.}
+\caption{Hit@5 and MRR@5 stratified by reasoning complexity (60 table-reasoning, 150 single-hop, and 90 multi-hop queries). Best value per column in bold.}
 \label{tab:ir-complexity}
 \small
 \begin{tabularx}{\linewidth}{lXXXXXX}
@@ -521,11 +602,25 @@ Naive (BM25) & 0.3000 & 0.6200 & 0.5556 & 0.1775 & 0.4548 & 0.3728 \\
 Advanced (dense) & 0.4000 & 0.6267 & 0.6556 & 0.2189 & 0.4583 & 0.4448 \\
 Hybrid (baseline) & 0.5833 & \textbf{0.8133} & 0.7333 & 0.3044 & \textbf{0.6392} & 0.5756 \\
 Table-aware & \textbf{0.7667} & 0.8067 & \textbf{0.7556} & \textbf{0.5972} & 0.6343 & \textbf{0.5826} \\
+Graph RAG & \textbf{0.7667} & 0.8067 & \textbf{0.7556} & \textbf{0.5972} & 0.6332 & \textbf{0.5826} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\pending{Interpret Tables~\ref{tab:ir-overall} and~\ref{tab:ir-complexity} after the run manifest is confirmed, and state the retrieval stream and reranking controls that isolate the Hybrid gains.}
+\paragraph{Comparative analysis of retrieval progression.}
+Tables~\ref{tab:ir-overall} and~\ref{tab:ir-complexity} highlight three principal findings across the five retrieval architectures:
+\begin{enumerate}
+\item \textbf{Hybrid sparse-dense fusion and cross-encoder reranking:} Transitioning from single-vector dense retrieval (Advanced) to the Hybrid baseline yields a $+15.33$ percentage-point gain in overall Hit@5 ($0.5900 \rightarrow 0.7433$) and a $+14.68$ point gain in MRR@5 ($0.4064 \rightarrow 0.5532$). Gains are observed across all complexity strata: $+18.66$ points in Hit@5 on single-hop queries, $+18.33$ points on table-reasoning queries, and $+7.77$ points on multi-hop queries.
+\item \textbf{Table consolidation and dual-representation indexing:} On the 60-query \emph{Table Reasoning} stratum, Table-aware retrieval elevates Hit@1 from $0.1167$ to $0.4667$ ($+35.00$ points), Hit@3 from $0.4667$ to $0.7667$ ($+30.00$ points), Hit@5 from $0.5833$ to $0.7667$ ($+18.34$ points), and MRR@5 from $0.3044$ to $0.5972$ ($+29.28$ points). Notably, scoring the table-consolidated index under strict primary-ID matching without merged sub-chunk alias resolution artificially depresses overall Hit@5 to $0.7233$ ($-2.00$ points below Hybrid), because relevant sub-chunks absorbed into a merged table are counted as misses when returned under the table's primary chunk identifier. Restoring rank-preserving alias resolution confirms that Table-aware improves overall Hit@1 by $+7.00$ points ($0.4233 \rightarrow 0.4933$) and overall Hit@5 by $+4.00$ points ($0.7433 \rightarrow 0.7833$) over Hybrid, while also lifting multi-hop Hit@5 from $0.7333$ to $0.7556$ ($+2.23$ points). Gains are particularly pronounced on clinical-style queries ($n=120$), where Hit@1 rises by $+10.00$ points ($0.4083 \rightarrow 0.5083$) and Hit@5 by $+6.66$ points ($0.7417 \rightarrow 0.8083$).
+\item \textbf{Rank stability under Graph RAG passage fusion:} Incorporating provenance-resolved passages from the knowledge graph into the candidate pool prior to cross-encoder reranking produces identical binary coverage metrics to Table-aware across every cutoff and complexity stratum ($\text{Hit@1} = 0.4933$, $\text{Hit@3} = 0.7300$, $\text{Hit@5} = 0.7833$, $\text{Recall@5} = 0.7167$, and $\text{Precision@5} = 0.1753$). A query-by-query comparison shows that cross-branch RRF alters the final top-$5$ documentary ranking order in only $9$ of the $300$ benchmark queries ($3.0\%$: $4$ single-hop, $3$ multi-hop, and $2$ table-reasoning queries). Because both the passage index and the knowledge-graph vector collections share the same BGE-M3 embedding space and all fused candidates are re-scored by the same cross-encoder reranker, the top-$30$ hybrid candidate pool already captures the high-affinity documentary chunks, leaving only minor rank-order swaps (shifting overall MRR@5 from $0.6114$ to $0.6108$ and NDCG@5 from $0.6122$ to $0.6115$).
+\end{enumerate}
+
+\paragraph{Impact of knowledge-graph context on answer synthesis and abstention.}
+Because top-$5$ passage retrieval is already saturated after table-aware consolidation and cross-encoder reranking, the primary contribution of Graph RAG operates at the generation stage through the structured entity-relationship context block appended to the prompt. Across comparative end-to-end generation experiments evaluated with Qwen3.8-27B on the 300-query main benchmark and the 100-query auxiliary unanswerable benchmark:
+\begin{itemize}
+\item \textbf{Multi-source synthesis and explicit graph attribution:} On the 300-query benchmark, the knowledge-graph branch supplies a non-empty structured entity-relationship block for $100\%$ of queries ($300/300$). The generator produces $827$ valid inline citations ($2.76$ valid citations per response) compared to $847$ valid citations in the Hybrid baseline, and explicitly cites the knowledge-graph context alongside documentary chunk identifiers in $71$ of the $300$ responses ($23.7\%$) to consolidate cross-section entity attributes and relational constraints.
+\item \textbf{Abstention robustness and latency trade-off:} On the 100-query auxiliary unanswerable set, Graph RAG achieves an explicit clinical refusal rate of $58.0\%$ ($58/100$), matching the Hybrid baseline ($59.0\%$, $59/100$). This equivalence demonstrates that providing a curated relational subgraph does not induce spurious compliance on out-of-scope clinical symptoms. Conversely, executing LLM-based query keyword extraction and dual Neo4j/Qdrant traversal increases mean end-to-end response latency on the 300-query benchmark from $42.33\,\text{s}$ per query under Hybrid to $65.40\,\text{s}$ per query under Graph RAG.
+\end{itemize}
 
 \subsection{Qualitative Assessment of Vietnamese Vaccine Answers}
 A qualitative assessment should trace the question to the ranked evidence and examine the generated response claim by claim. For product-specific questions, check whether the passage refers to the right product and formulation. For tables, check whether the evidence includes the relevant headers and any qualifying notes. For evidence distributed across sources, check whether all required passages appear and whether the answer combines them consistently. A partially answerable case should show which parts the source supports and how the response handles the remaining uncertainty.
@@ -576,7 +671,105 @@ The generation files \artifact{src/vacxis_capstone_fa26/generation/prompts.py} a
 \pending{Insert the exact versioned generator prompt, context formatting, model settings and a sanitized saved response record from the final comparison.}
 
 \subsection{Graph Schema and Constraints}
-\pending{Insert the versioned Graph RAG node and edge specification, graph serialization or storage constraints, provenance fields, and a worked retrieval trace with source identifiers.}
+\label{app:graph_schema}
+The vaccine knowledge graph enforces a twelve-class biomedical ontology tailored to Vietnamese regulatory package inserts. During extraction, the language model classifies each identified clinical concept into one of twelve canonical types—\emph{Vaccine}, \emph{Ingredient}, \emph{Pathogen}, \emph{Indication}, \emph{Contraindication}, \emph{Adverse\_Reaction}, \emph{Clinical\_Outcome}, \emph{Target\_Population}, \emph{Dosage\_And\_Route}, \emph{Precaution}, \emph{Drug\_Interaction}, or \emph{Storage\_Condition} (defaulting to \emph{Other} when a concept falls outside these categories)—and emits structured JSON objects containing typed entity descriptions and directed relational triplets (Listing~\ref{lst:vax-entity-ontology}).
+
+\begin{lstlisting}[caption={Biomedical entity ontology and JSON output schema used for vaccine knowledge-graph extraction.},label={lst:vax-entity-ontology}]
+Entity Ontology Categories (12 Clinical Classes):
+  - Vaccine: Commercial product names and proprietary vaccine formulations.
+  - Ingredient: Active antigens, toxoids, viral/bacterial strains, adjuvants (e.g., AS01B, aluminum hydroxide), excipients, and manufacturing residues.
+  - Pathogen: Causative viruses, bacteria, or specific serotypes/serogroups.
+  - Indication: Prophylactic diseases, syndromes, or clinical complications prevented.
+  - Contraindication: Absolute medical exclusions, hypersensitivity history, or acute febrile states.
+  - Adverse_Reaction: Local and systemic post-vaccination adverse events.
+  - Clinical_Outcome: Immunogenicity endpoints (GMT, GMC), seroprotection rates, and protective efficacy.
+  - Target_Population: Recommended age cohorts, pregnant/lactating women, preterm infants, or immunocompromised groups.
+  - Dosage_And_Route: Dose volume (e.g., 0.5 ml), administration route (IM/SC), anatomical site, and primary/booster schedules.
+  - Precaution: Pre-vaccination screening and post-vaccination clinical observation requirements.
+  - Drug_Interaction: Concomitant vaccines, immunosuppressive therapies, or immunoglobulin interactions.
+  - Storage_Condition: Cold-chain temperature ranges (2-8 C), light protection, freezing prohibition, and post-reconstitution shelf life.
+
+JSON Extraction Output Schema:
+{
+  "entities": [
+    {
+      "name": "<canonical_entity_name>",
+      "type": "<one_of_12_clinical_classes_or_Other>",
+      "description": "<concise_vietnamese_clinical_description>"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "<source_entity_name>",
+      "target": "<target_entity_name>",
+      "keywords": "<comma_separated_relational_keywords>",
+      "description": "<vietnamese_relational_statement>"
+    }
+  ]
+}
+\end{lstlisting}
+
+In the Neo4j property-graph backend, entity resolution is enforced by indexing the canonical entity identifier under the workspace label \texttt{:vacxis} using both a B-tree uniqueness index and a full-text search index (Listing~\ref{lst:vax-neo4j-schema}). Multi-chunk entity and relationship descriptions, along with their documentary segment hashes, are concatenated using the \texttt{<SEP>} delimiter and resolved deterministically back to canonical corpus chunk identifiers at retrieval time. Following the schema definitions, the worked trace box illustrates an end-to-end Graph RAG retrieval and citation record from the 300-query evaluation benchmark (\texttt{eval\_0014}), showing how five table-aware reranked documentary chunks are combined with the structured knowledge-graph context block.
+
+\begin{lstlisting}[language=json,caption={Property-graph schema and index constraints in Neo4j ($3,572$ vertices, $1,830$ directed relationships).},label={lst:vax-neo4j-schema}]
+{
+  "neo4j_indexes": [
+    "CREATE INDEX IF NOT EXISTS FOR (n:vacxis) ON (n.entity_id)",
+    "CREATE FULLTEXT INDEX entity_id_fulltext_idx_vacxis IF NOT EXISTS FOR (n:vacxis) ON EACH [n.entity_id]"
+  ],
+  "vertex_schema": {
+    "labels": ["vacxis"],
+    "properties": {
+      "entity_id": "<canonical_vietnamese_entity_name>",
+      "entity_type": "<clinical_ontology_class>",
+      "description": "<SEP>-delimited Vietnamese clinical descriptions across source chunks",
+      "source_id": "<SEP>-delimited provenance segment identifiers"
+    }
+  },
+  "edge_schema": {
+    "type": "DIRECTED",
+    "source_entity_id": "<source_vertex_entity_id>",
+    "target_entity_id": "<target_vertex_entity_id>",
+    "properties": {
+      "keywords": "<comma_separated_vietnamese_relational_keywords>",
+      "description": "<SEP>-delimited relational evidence statements",
+      "weight": 1.0,
+      "source_id": "<SEP>-delimited provenance segment identifiers"
+    }
+  }
+}
+\end{lstlisting}
+
+\begin{tcolorbox}[colback=white,colframe=black!65,boxrule=0.6pt,arc=0pt,left=8pt,right=8pt,top=8pt,bottom=8pt]
+\textbf{Worked Graph RAG Retrieval and Citation Trace (\texttt{eval\_0014} --- Answerable / Single-hop / Patient Style)}
+
+\medskip
+\textbf{Question:} \emph{\vn{``Bé 5 tuổi tiêm Vaxigrip, phản ứng gì thường gặp, khi nào báo bác sĩ?''}}
+
+\medskip
+\textbf{Retrieved Evidence Contexts (5 reranked documentary chunks + 1 structured knowledge-graph block):}
+\begin{enumerate}
+    \item \texttt{vaxigrip\_0\_5ml\_qlvx\_0646\_13\_c\_0017} --- \vn{VAXIGRIP (0,5ml) | Trẻ em (dữ liệu an toàn thử nghiệm lâm sàng)}
+    \item \texttt{vaxigrip\_300310033526\_c\_0007} --- \vn{Vaxigrip | Tác dụng không mong muốn ở trẻ em từ 3 đến 8 tuổi}
+    \item \texttt{vaxigrip\_0\_25ml\_qlvx\_0652\_13\_c\_0008} --- \vn{VAXIGRIP (0,25ml) | Tác dụng không mong muốn trong thử nghiệm lâm sàng}
+    \item \texttt{vaxigrip\_tetra\_300310305924\_c\_0006} --- \vn{Vaxigrip Tetra | Hồ sơ an toàn nhi khoa}
+    \item \texttt{vaxigrip\_0\_5ml\_qlvx\_0646\_13\_c\_0014} --- \vn{VAXIGRIP (0,5ml) | Bảng tổng hợp phản ứng bất lợi và văn xuôi tóm tắt}
+    \item \texttt{lightrag\_kg\_context} --- \vn{Đồ thị tri thức LightRAG (20 thực thể và 20 quan hệ có hướng, bao gồm:} \vn{Phản Ứng Không Mong Muốn} $\rightarrow$ \vn{Vaxigrip}; \vn{Bác sĩ} $\rightarrow$ \vn{Phản Ứng Không Mong Muốn}: \emph{\vn{``Các phản ứng không mong muốn phải được thông báo ngay cho bác sĩ''}}\vn{)}
+\end{enumerate}
+
+\textbf{Generated Answer (Qwen3.8-27B):}
+\begin{quote}
+\vn{Chào bạn, dựa trên các tài liệu hướng dẫn sử dụng vắc-xin Vaxigrip được cung cấp, dưới đây là thông tin về các phản ứng thường gặp và khuyến cáo khi cần báo cáo bác sĩ cho bé 5 tuổi:}
+
+\textbf{\vn{1. Các phản ứng thường gặp ở trẻ 5 tuổi (thuộc nhóm 3--8 tuổi):}} \vn{Theo tài liệu, đối với trẻ em từ 3 đến 8 tuổi, các phản ứng trong dự kiến thường được báo cáo nhất trong vòng 7 ngày sau khi tiêm Vaxigrip bao gồm: đau tại chỗ tiêm hoặc chỗ tiêm bị cứng (56,3\%) [\texttt{vaxigrip\_0\_5ml\_qlvx\_0646\_13\_c\_0014}], khó chịu (27,3\%) [\texttt{vaxigrip\_0\_5ml\_qlvx\_0646\_13\_c\_0014}], đau cơ (25,5\%) [\texttt{vaxigrip\_0\_5ml\_qlvx\_0646\_13\_c\_0014}], và đỏ tại chỗ tiêm (23,4\%) [\texttt{vaxigrip\_0\_5ml\_qlvx\_0646\_13\_c\_0014}]. Ngoài ra, các dữ liệu tổng hợp khác cũng ghi nhận ở nhóm trẻ 3--8 tuổi: ban đỏ tại chỗ tiêm (30,3\%), đau đầu (25,7\%), sưng tại chỗ tiêm (22,1\%), khó chịu tại chỗ tiêm (17,6\%) và run rẩy (11,2\%) [\texttt{vaxigrip\_300310033526\_c\_0007}].}
+
+\textbf{\vn{2. Đặc điểm và thời gian diễn biến:}} \vn{Các phản ứng có hại thường gặp trong vòng 3 ngày đầu sau khi tiêm vắc-xin và thường tự khỏi trong 1 đến 3 ngày kể từ khi khởi phát triệu chứng [\texttt{vaxigrip\_300310033526\_c\_0007}]. Phần lớn các phản ứng này ở mức độ nhẹ đến vừa [\texttt{vaxigrip\_300310033526\_c\_0007}].}
+
+\textbf{\vn{3. Khi nào cần báo bác sĩ?}} \vn{Tài liệu hướng dẫn sử dụng khuyến cáo: ``Thông báo ngay cho bác sĩ hoặc dược sỹ những phản ứng có hại gặp phải khi sử dụng vắc-xin'' [\texttt{vaxigrip\_300310033526\_c\_0007}]. Lưu ý thêm: Phản ứng phản vệ là phản ứng nghiêm trọng có thể xảy ra sau tiêm Vaxigrip, cần được theo dõi và xử lý kịp thời [\texttt{lightrag\_kg\_context}].}
+\end{quote}
+
+\textbf{Validated Citations:} \texttt{vaxigrip\_0\_5ml\_qlvx\_0646\_13\_c\_0014}, \texttt{vaxigrip\_300310033526\_c\_0007}, \texttt{lightrag\_kg\_context} \quad (\textbf{Invalid Citations:} none)
+\end{tcolorbox}
 
 \subsection{Example Questions and Reviewed Outputs}
 \pending{Insert approved benchmark examples with expected and actual outputs, evidence IDs, and reviewer notes. Include each evaluated configuration where comparable examples are available.}
