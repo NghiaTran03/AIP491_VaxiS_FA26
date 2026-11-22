@@ -169,7 +169,7 @@
 \end{center}
 
 
-Vietnamese vaccine information is published in regulatory documents that vary in layout and are frequently written for specialist readers. VaxiS is a Vietnamese-language retrieval-augmented generation (RAG) system designed to locate clinically relevant passages from official package inserts and trace every generated claim to its documentary evidence. The system integrates a structure-aware Markdown parsing and recursive character splitting pipeline over 75 official vaccine usage leaflets (yielding 1,744 raw corpus chunks and 1,492 table-consolidated units), lexical and dense vector retrieval paths, a hybrid retrieval architecture combining dense and learned sparse representations with reciprocal rank fusion and cross-encoder reranking, and a domain-specific biomedical knowledge graph comprising 3,572 clinical entity vertices and 1,830 directed relationships. A shared grounded generator synthesizes Vietnamese responses with inline chunk-level citations and explicit abstention guardrails. We evaluate the system across a progressive ablation sequence—Naive (BM25), Advanced (dense), Hybrid (baseline), Table-aware, Graph RAG, and Agent RAG—on a stratified 300-query Vietnamese benchmark spanning single-hop, multi-hop, and table-reasoning tasks, supplemented by a 100-query auxiliary unanswerable set. Empirical results demonstrate that Hybrid retrieval substantially outperforms lexical and single-vector dense baselines (lifting overall Hit@5 from 0.5367 and 0.5900 to 0.7433), while Table-aware dual indexing and Graph RAG further elevate overall Hit@5 to 0.7833 (and table-reasoning Hit@1 from 0.1167 to 0.4667) while preserving reliable citation attribution and clinical refusal on out-of-scope inquiries.
+Vietnamese vaccine information is published in regulatory documents that vary in layout and are frequently written for specialist readers. VaxiS is a Vietnamese-language retrieval-augmented generation (RAG) system designed to locate clinically relevant passages from official package inserts and trace every generated claim to its documentary evidence. The system integrates a structure-aware Markdown parsing and recursive character splitting pipeline over 75 official vaccine usage leaflets (yielding 1,744 raw corpus chunks and 1,492 table-consolidated units), lexical and dense vector retrieval paths, a hybrid retrieval architecture combining dense and learned sparse representations with reciprocal rank fusion and cross-encoder reranking, and a domain-specific biomedical knowledge graph comprising 3,572 clinical entity vertices and 1,830 directed relationships. A shared grounded generator synthesizes Vietnamese responses with inline chunk-level citations and explicit abstention guardrails. We evaluate the system across a progressive ablation sequence—Naive (BM25), Advanced (dense), Hybrid (baseline), Table-aware, and Graph RAG—on a stratified 300-query Vietnamese benchmark spanning single-hop, multi-hop, and table-reasoning tasks, supplemented by a 100-query auxiliary unanswerable set. Empirical results demonstrate that Hybrid retrieval substantially outperforms lexical and single-vector dense baselines (lifting overall Hit@5 from 0.5367 and 0.5900 to 0.7433), while Table-aware dual indexing and Graph RAG further elevate overall Hit@5 to 0.7833 (and table-reasoning Hit@1 from 0.1167 to 0.4667) while preserving reliable citation attribution and clinical refusal on out-of-scope inquiries.
 
 \textbf{Keywords}: Vaccine information retrieval, Vietnamese question answering, retrieval-augmented generation, hybrid retrieval, biomedical knowledge graph, evidence attribution.
 
@@ -207,7 +207,7 @@ The main research question is how to retrieve relevant evidence from Vietnamese 
 
 \begin{enumerate}
 \item Prepare a searchable corpus from available vaccine source documents, retaining the document identifiers and section metadata needed to trace evidence.
-\item Compare lexical, dense, and hybrid retrieval, then assess the proposed Table-aware, Graph RAG, and Agent RAG extensions.
+\item Compare lexical, dense, and hybrid retrieval, then assess the proposed Table-aware and Graph RAG extensions.
 \item Generate Vietnamese responses that cite the supplied evidence and communicate when the evidence is insufficient.
 \item Assess retrieval quality, answer quality, citation support, and abstention using documented datasets and reproducible run configurations.
 \end{enumerate}
@@ -372,10 +372,6 @@ S_{\text{GraphRRF}}(d^*) = \frac{\mathbb{I}[d^* \in L_{\text{hyb}}]}{c + \mathrm
 Whenever a graph-traced passage matches a candidate in $L_{\text{hyb}}$, the dual table-aware payload (prose summary paired with the complete HTML table) is preserved and receives the combined RRF boost. The unified candidate pool is then re-ordered by the cross-encoder reranker (BGE-Reranker-v2-M3) to select the final top-$k$ ($k=5$) documentary chunks, after which the structured knowledge-graph summary block is appended at position $k+1$. If no graph entities or relationships exceed the similarity threshold, the structured graph block is omitted and the pipeline falls back gracefully to the top-$k$ reranked documentary chunks.
 \end{itemize}
 
-Agent RAG is the sixth configuration and is intended to evaluate tool-mediated evidence gathering across retrieval steps.
-\pending{Provide the Agent RAG implementation path and commit, model, available tools, routing and stopping logic, evidence aggregation and citation rules, call budget, fallback behavior, and an example trace.}
-\pending{Provide the Agent RAG evaluation protocol, query coverage, comparison settings, metrics, tool-call and latency summaries, and failure analysis.}
-
 \subsection{Answer Grounding and Verification}
 The generation module instructs the language model to synthesize Vietnamese responses exclusively from the supplied evidence blocks, append explicit bracketed chunk identifiers (\texttt{[CHUNK\_ID]}) after every clinical statement, and abstain when the retrieved context is insufficient to answer the question safely. Post-generation verification parses all bracketed citation tokens from the response and validates their membership against the set of retrieved chunk identifiers for that query, partitioning extracted tokens into verified citations and invalid (hallucinated) identifiers. Clinical abstention is detected by matching the generated text against a standardized lexicon of Vietnamese refusal expressions. Because syntactic citation validity establishes passage traceability rather than semantic entailment, answer correctness and claim-level faithfulness are further evaluated through LLM-as-a-Judge metrics (DeepEval Faithfulness, Answer Relevancy, Contextual Relevancy, Contextual Precision, Contextual Recall, and GEval Medical Correctness) and audited through the multi-rater clinical review platform described in Section~\ref{subsec:expert_review_protocol}.
 
@@ -505,7 +501,7 @@ Within the review interface, experts inspect the generated question, expected an
 \label{sec:experiments}
 
 \subsection{Experimental Design}
-The study compares the six configurations in Table~\ref{tab:sequence}. Each comparison should use a frozen corpus and judgment set, the same scored questions and matched evidence budgets. Record differences intrinsic to the methods, such as using a graph traversal or multiple retrieval calls. Hold the generator, prompts and judge settings fixed for comparisons intended to isolate the effect of retrieval. Hybrid serves as the reference for extensions. Because Hybrid can change both retrieval streams and reranking, the sequence is a system-level comparison. Component effects require matched controls, such as Hybrid with reranking disabled.
+The study compares the five configurations in Table~\ref{tab:sequence}. Each comparison should use a frozen corpus and judgment set, the same scored questions and matched evidence budgets. Record differences intrinsic to the methods, such as using a graph traversal or multiple retrieval calls. Hold the generator, prompts and judge settings fixed for comparisons intended to isolate the effect of retrieval. Hybrid serves as the reference for extensions. Because Hybrid can change both retrieval streams and reranking, the sequence is a system-level comparison. Component effects require matched controls, such as Hybrid with reranking disabled.
 
 \begin{table}[htbp]
 \centering
@@ -520,7 +516,6 @@ Order & Configuration & Evidence path\\
 3 & Hybrid (baseline) & Dense and learned sparse retrieval, rank fusion and optional reranking.\\
 4 & Table-aware & Hybrid retrieval over an index whose tables are stored as a prose summary plus the original HTML table in one chunk.\\
 5 & Graph RAG & Table-aware hybrid retrieval fused via alias-aware RRF and cross-encoder reranking with dual-level knowledge-graph retrieval (Neo4j and Qdrant), supplemented by a structured entity-relationship context block.\\
-6 & Agent RAG & \pending{Record final orchestration and tool-use path.}\\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -546,7 +541,6 @@ Advanced & \pending{Insert matched dense retrieval, answer and citation scores, 
 Hybrid (baseline) & \pending{Identify the baseline run and insert matched retrieval, answer and citation scores, abstention and latency.}\\
 Table-aware & \pending{Insert verified full-set and table-slice metrics and deltas from Hybrid, including row or cell attribution and latency.}\\
 Graph RAG & \pending{Insert verified full-set and multi-hop metrics and deltas from Hybrid, including graph provenance and latency.}\\
-Agent RAG & \pending{Insert verified matched metrics and deltas from Hybrid, with call counts, failures and latency.}\\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -615,7 +609,7 @@ Because top-$5$ passage retrieval is already saturated after table-aware consoli
 \subsection{Qualitative Assessment of Vietnamese Vaccine Answers}
 A qualitative assessment should trace the question to the ranked evidence and examine the generated response claim by claim. For product-specific questions, check whether the passage refers to the right product and formulation. For tables, check whether the evidence includes the relevant headers and any qualifying notes. For evidence distributed across sources, check whether all required passages appear and whether the answer combines them consistently. A partially answerable case should show which parts the source supports and how the response handles the remaining uncertainty.
 
-\pending{Insert reviewed examples with query IDs, variant, source titles and chunk IDs, source excerpts, actual output and assessor judgments. Include a supported answer, an evidence miss or unsupported claim, a table-dependent example and a partially answerable case. Supply reviewed Graph RAG and Agent RAG examples once the corresponding runs are available.}
+\pending{Insert reviewed examples with query IDs, variant, source titles and chunk IDs, source excerpts, actual output and assessor judgments. Include a supported answer, an evidence miss or unsupported claim, a table-dependent example and a partially answerable case. Supply reviewed Graph RAG examples once the corresponding runs are available.}
 
 \section{Conclusion}
 \label{sec:conclusion}
