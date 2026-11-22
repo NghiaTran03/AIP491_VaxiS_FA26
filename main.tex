@@ -650,7 +650,16 @@ Several limitations delimit the scope of our findings. The evaluated corpus is r
 %    showstringspaces=falsface
 \subsection{Source-to-Markdown Processing, Metadata Extraction, and Chunking}
 \label{app:source_processing}
-Regulatory vaccine usage leaflets collected from the Drug Administration of Vietnam portal were trimmed of non-clinical packaging pages and converted to structured Markdown with embedded HTML tables via Google's Gemini interface, followed by manual clinical proofreading against the source PDFs. During indexing, each verified Markdown document is parsed into hierarchical clinical sections, classified into one of 21 standardized medical categories, and segmented via recursive character splitting across descending structural delimiters ($\texttt{\textbackslash n\textbackslash n} \rightarrow \texttt{\textbackslash n} \rightarrow \texttt{.} \rightarrow \text{whitespace}$) for prose blocks and header-preserving row partitioning for HTML and Markdown tables. Every resulting chunk is persisted in Apache Parquet format alongside its canonical product title, section hierarchy, modality label, table indicator, and source filename.
+Regulatory vaccine usage leaflets collected from the Drug Administration of Vietnam portal were trimmed of non-clinical packaging pages and converted to structured Markdown with embedded HTML tables via Google's Gemini web interface using the standardized Vietnamese OCR prompt shown below, followed by manual clinical proofreading against the source PDFs. During indexing, each verified Markdown document is parsed into hierarchical clinical sections, classified into one of 21 standardized medical categories, and segmented via recursive character splitting across descending structural delimiters ($\texttt{\textbackslash n\textbackslash n} \rightarrow \texttt{\textbackslash n} \rightarrow \texttt{.} \rightarrow \text{whitespace}$) for prose blocks and header-preserving row partitioning for HTML and Markdown tables. Every resulting chunk is persisted in Apache Parquet format alongside its canonical product title, section hierarchy, modality label, table indicator, and source filename.
+
+\begin{tcolorbox}[colback=white,colframe=black!65,boxrule=0.6pt,arc=0pt,left=8pt,right=8pt,top=8pt,bottom=8pt]
+\textbf{Gemini Web OCR Conversion Prompt}
+
+\medskip
+\begin{quote}
+\vn{Thực hiện OCR các bức ảnh/tài liệu này, yêu cầu độ chính xác, không thay đổi (no paraphase) đoạn văn, không rút gọn, viết bằng tiếng việt, với dữ liệu dạng bảng sử dụng định dạng HTML giữ nguyên thuộc tính \texttt{colspan} và \texttt{rowspan} của bảng gốc. Yêu cầu dữ liệu đầu ra phải được gói gọn chỉ trong 1 block HTML. Sử dụng \texttt{\#}, \texttt{\#\#}, \texttt{\#\#\#} để chia đầu mục, \texttt{[Trang X]} để đánh dấu trang.}
+\end{quote}
+\end{tcolorbox}
 
 \subsection{Answer Generation Prompts and Output Schema}
 \label{app:generation_prompts}
