@@ -234,11 +234,7 @@ The documented pipeline has a document-preparation and indexing stage followed b
 
 \begin{figure}[htbp]
 \centering
-\fbox{\parbox{.9\linewidth}{\centering
-Scraped PDFs $\rightarrow$ Gemini $\rightarrow$ Cleaned Markdown\\[.6em]
-Section-aware chunks with metadata $\rightarrow$ Parquet and Qdrant\\[.6em]
-Vietnamese question $\rightarrow$ Selected retriever $\rightarrow$ Evidence chunks\\[.6em]
-Evidence and question $\rightarrow$ Generator $\rightarrow$ Response and source identifiers}}
+\resizebox{\linewidth}{!}{\input{figures/system-flow.tex}}
 \caption{Documented VaxiS indexing and question-answering flow. The evidence store used depends on the retrieval configuration.}
 \label{fig:system}
 \end{figure}

@@ -1,0 +1,73 @@
+\begingroup
+\definecolor{vaxisFlowInk}{HTML}{172738}%
+\definecolor{vaxisFlowMuted}{HTML}{40566D}%
+\definecolor{vaxisFlowBlue}{HTML}{4180C9}%
+\definecolor{vaxisFlowBlueFill}{HTML}{E8F2FC}%
+\definecolor{vaxisFlowGreen}{HTML}{48866E}%
+\definecolor{vaxisFlowGreenFill}{HTML}{E6F4ED}%
+\definecolor{vaxisFlowAmber}{HTML}{A36F24}%
+\definecolor{vaxisFlowAmberFill}{HTML}{FCF2DB}%
+\definecolor{vaxisFlowViolet}{HTML}{795AB1}%
+\definecolor{vaxisFlowVioletFill}{HTML}{F0EAF9}%
+\definecolor{vaxisFlowGray}{HTML}{788695}%
+\definecolor{vaxisFlowGrayFill}{HTML}{EFF2F5}%
+%
+\begin{tikzpicture}[
+    card/.style={
+        rounded corners=2.4mm, line width=.6pt, outer sep=0pt,
+        minimum height=1.3cm, align=center, inner sep=4pt,
+        font=\sffamily\small, text=vaxisFlowInk
+    },
+    indexing card/.style={card, minimum width=3.52cm},
+    answering card/.style={card, minimum width=2.74cm},
+    blue card/.style={draw=vaxisFlowBlue, fill=vaxisFlowBlueFill},
+    green card/.style={draw=vaxisFlowGreen, fill=vaxisFlowGreenFill},
+    amber card/.style={draw=vaxisFlowAmber, fill=vaxisFlowAmberFill},
+    violet card/.style={draw=vaxisFlowViolet, fill=vaxisFlowVioletFill},
+    gray card/.style={draw=vaxisFlowGray, fill=vaxisFlowGrayFill},
+    row heading/.style={
+        anchor=west, inner sep=0pt, font=\sffamily\small\bfseries,
+        text=vaxisFlowInk
+    },
+    flow arrow/.style={-{Stealth[length=2.3mm,width=1.65mm]},
+        draw=vaxisFlowInk, line width=.72pt, shorten <=1.2pt, shorten >=1.2pt},
+    routed arrow/.style={flow arrow, rounded corners=2mm, draw=vaxisFlowMuted},
+    route label/.style={above=1.5pt, inner sep=1pt,
+        font=\sffamily\footnotesize, text=vaxisFlowMuted}
+]
+\node[row heading] at (0,0) {Document preparation and indexing};
+\node[indexing card, blue card] (pdfs) at (1.78,-1.02)
+    {\textbf{Scraped PDFs}\\Regulatory documents};
+\node[indexing card, blue card] (convert) at (5.77,-1.02)
+    {\textbf{Gemini conversion}\\Cleaned Markdown};
+\node[indexing card, blue card] (chunk) at (9.76,-1.02)
+    {\textbf{Section-aware chunks}\\With source metadata};
+\node[indexing card, green card] (store) at (13.75,-1.02)
+    {\textbf{Index and storage}\\Parquet and Qdrant};
+
+\node[row heading] at (0,-2.36) {Question answering};
+\node[answering card, blue card] (question) at (1.39,-3.50)
+    {\textbf{Vietnamese}\\\textbf{question}};
+\node[answering card, amber card] (retriever) at (4.58,-3.50)
+    {\textbf{Selected}\\\textbf{retriever}};
+\node[answering card, green card] (evidence) at (7.76,-3.50)
+    {\textbf{Evidence}\\\textbf{chunks}};
+\node[answering card, violet card] (generator) at (10.94,-3.50)
+    {\textbf{Answer}\\\textbf{generator}};
+\node[answering card, gray card] (response) at (14.12,-3.50)
+    {\textbf{Response}\\and source IDs};
+
+\draw[flow arrow] (pdfs.east) -- (convert.west);
+\draw[flow arrow] (convert.east) -- (chunk.west);
+\draw[flow arrow] (chunk.east) -- (store.west);
+\draw[flow arrow] (question.east) -- (retriever.west);
+\draw[flow arrow] (retriever.east) -- (evidence.west);
+\draw[flow arrow] (evidence.east) -- (generator.west);
+\draw[flow arrow] (generator.east) -- (response.west);
+
+\draw[routed arrow] (store.south) -- (13.75,-2.16)
+    -- node[midway, route label] {Indexed evidence} (4.58,-2.16) -- (retriever.north);
+\draw[routed arrow] (question.south) -- (1.39,-4.67)
+    -- node[midway, route label] {Original question} (10.94,-4.67) -- (generator.south);
+\end{tikzpicture}%
+\endgroup
