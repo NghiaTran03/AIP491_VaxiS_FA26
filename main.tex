@@ -554,15 +554,16 @@ Table~\ref{tab:rag-quality} summarizes the four end-to-end runs. Table-aware + L
 \toprule
 Configuration & Answer relevancy & Faithfulness & Contextual relevancy & Contextual precision & Contextual recall & Jev correctness\\
 \midrule
-Hybrid & 0.7716 & 0.7247 & 0.3535 & 0.5619 & 0.5443 & 0.6325 \\
-Table-aware & 0.7724 & 0.7071 & 0.3668 & 0.5743 & 0.5682 & 0.6276 \\
+Hybrid & 0.7716 & \textbf{0.7247} & 0.3535 & 0.5619 & 0.5443 & 0.6325 \\
+Table-aware & 0.7724 & 0.7071 & \textbf{0.3668} & 0.5743 & 0.5682 & 0.6276 \\
 Standalone LightRAG & 0.7461 & 0.6708 & 0.1838 & 0.4164 & 0.3596 & 0.5450 \\
-Table-aware + LightRAG & 0.7819 & 0.6777 & 0.2476 & 0.5762 & 0.5753 & 0.6360 \\
+Table-aware + LightRAG & \textbf{0.7819} & 0.6777 & 0.2476 & \textbf{0.5762} & \textbf{0.5753} & \textbf{0.6360} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 The relative ordering varies by question type (Table~\ref{tab:rag-slices}). Adding LightRAG to Table-aware raises table-reasoning correctness from 0.6329 to 0.6501, the highest score in that slice. On multi-hop questions, the combined system scores 0.5527, between Table-aware (0.5485) and Hybrid (0.5635). On single-hop questions, Hybrid leads in all three measures shown. Its faithfulness is also highest in the other two slices.
+
 
 \begin{table}[htbp]
 \centering
@@ -573,9 +574,9 @@ The relative ordering varies by question type (Table~\ref{tab:rag-slices}). Addi
 \toprule
 Configuration & Slice ($n$) & Answer relevancy & Faithfulness & Jev correctness\\
 \midrule
-Hybrid & Single-hop (150) & 0.8002 & 0.7506 & 0.6936 \\
-Hybrid & Multi-hop (90) & 0.7686 & 0.7045 & 0.5635 \\
-Hybrid & Table reasoning (60) & 0.7048 & 0.6904 & 0.5831 \\
+Hybrid & Single-hop (150) & \textbf{0.8002} & \textbf{0.7506} & \textbf{0.6936} \\
+Hybrid & Multi-hop (90) & 0.7686 & \textbf{0.7045} & \textbf{0.5635} \\
+Hybrid & Table reasoning (60) & 0.7048 & \textbf{0.6904} & 0.5831 \\
 Table-aware & Single-hop (150) & 0.7914 & 0.7248 & 0.6730 \\
 Table-aware & Multi-hop (90) & 0.7722 & 0.6910 & 0.5485 \\
 Table-aware & Table reasoning (60) & 0.7252 & 0.6869 & 0.6329 \\
@@ -583,8 +584,8 @@ Standalone LightRAG & Single-hop (150) & 0.7671 & 0.6963 & 0.5927 \\
 Standalone LightRAG & Multi-hop (90) & 0.7582 & 0.6713 & 0.5211 \\
 Standalone LightRAG & Table reasoning (60) & 0.6756 & 0.6064 & 0.4615 \\
 Table-aware + LightRAG & Single-hop (150) & 0.7986 & 0.7032 & 0.6803 \\
-Table-aware + LightRAG & Multi-hop (90) & 0.7845 & 0.6350 & 0.5527 \\
-Table-aware + LightRAG & Table reasoning (60) & 0.7362 & 0.6778 & 0.6501 \\
+Table-aware + LightRAG & Multi-hop (90) & \textbf{0.7845} & 0.6350 & 0.5527 \\
+Table-aware + LightRAG & Table reasoning (60) & \textbf{0.7362} & 0.6778 & \textbf{0.6501} \\
 \bottomrule
 \end{tabularx}
 \end{table}
