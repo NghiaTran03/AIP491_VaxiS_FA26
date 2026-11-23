@@ -169,9 +169,9 @@
 \end{center}
 
 
-Vietnamese vaccine information is published in regulatory documents that vary in layout and are frequently written for specialist readers. VaxiS is a Vietnamese-language retrieval-augmented generation (RAG) system designed to locate clinically relevant passages from official package inserts and trace every generated claim to its documentary evidence. The system integrates a structure-aware Markdown parsing and recursive character splitting pipeline over 75 official vaccine usage leaflets (yielding 1,744 raw corpus chunks and 1,492 table-consolidated units), lexical and dense vector retrieval paths, a hybrid retrieval architecture combining dense and learned sparse representations with reciprocal rank fusion and cross-encoder reranking, and a domain-specific biomedical knowledge graph comprising 3,572 clinical entity vertices and 1,830 directed relationships. A shared grounded generator synthesizes Vietnamese responses with inline chunk-level citations and explicit abstention guardrails. We evaluate the system across a progressive ablation sequence—Naive (BM25), Advanced (dense), Hybrid (baseline), Table-aware, and Graph RAG—on a stratified 300-query Vietnamese benchmark spanning single-hop, multi-hop, and table-reasoning tasks, supplemented by a 100-query auxiliary unanswerable set. Empirical results demonstrate that Hybrid retrieval substantially outperforms lexical and single-vector dense baselines (lifting overall Hit@5 from 0.5367 and 0.5900 to 0.7433), while Table-aware dual indexing and Graph RAG further elevate overall Hit@5 to 0.7833 (and table-reasoning Hit@1 from 0.1167 to 0.4667) while preserving reliable citation attribution and clinical refusal on out-of-scope inquiries.
+Vietnamese vaccine information is published in regulatory documents that vary in layout, containing product-specific information in prose and tables that can be difficult to search. VaxiS is a Vietnamese retrieval-augmented generation (RAG) system designed to locate clinically relevant passages from official documents and trace every generated claim to its documentary evidence. The system integrates a structure-aware Markdown parsing and recursive character splitting pipeline over 75 official vaccine usage leaflets (yielding 1,744 raw corpus chunks and 1,492 table-consolidated units), lexical and dense vector retrieval paths, a hybrid retrieval architecture combining dense and learned sparse representations with reciprocal rank fusion and cross-encoder reranking, and a domain-specific biomedical knowledge graph comprising 3,572 clinical entity vertices and 1,830 directed relationships. A shared grounded generator synthesizes Vietnamese responses with inline chunk-level citations and explicit abstention guardrails. We evaluate the system across a progressive ablation sequence—Naive (BM25), Advanced (dense), Hybrid (baseline), Table-aware, LightRAG and Table-aware + LightRAG - on a stratified 300-query Vietnamese benchmark spanning single-hop, multi-hop, and table-reasoning tasks, supplemented by a 100-query auxiliary unanswerable set. Empirical results demonstrate that Hybrid retrieval substantially outperforms lexical and single-vector dense baselines (lifting overall Hit@5 from 0.5486 and 0.6042 to 0.7535), while Table-aware dual indexing and Graph RAG further elevate overall Hit@5 to 0.7951 (and table-reasoning Hit@1 from 0.1186 to 0.4746) while preserving reliable citation attribution and clinical refusal on out-of-scope inquiries.
 
-\textbf{Keywords}: Vaccine information retrieval, Vietnamese question answering, retrieval-augmented generation, hybrid retrieval, biomedical knowledge graph, evidence attribution.
+\textbf{Keywords}: Vaccine information retrieval, Vietnamese question answering, retrieval-augmented generation, table retrieval, biomedical knowledge graph, evidence attribution.
 
 % ... sau \maketitle
 \newpage
@@ -521,7 +521,7 @@ Across the full 300-query campaign (435 expert turns completed, zero items rejec
 \label{sec:experiments}
 
 \subsection{Experimental Design}
-The study compares the five configurations in Table~\ref{tab:sequence}. Each comparison should use a frozen corpus and judgment set, the same scored questions and matched evidence budgets. Record differences intrinsic to the methods, such as using a graph traversal or multiple retrieval calls. Hold the generator, prompts and judge settings fixed for comparisons intended to isolate the effect of retrieval. Hybrid serves as the reference for extensions. Because Hybrid can change both retrieval streams and reranking, the sequence is a system-level comparison. Component effects require matched controls, such as Hybrid with reranking disabled.
+Table~\ref{tab:sequence} presents six configurations spanning lexical, dense, hybrid, table-aware, and graph-based retrieval. Hybrid is the reference for evaluating table-aware indexing, and Table-aware is the reference for evaluating the addition of LightRAG. Standalone LightRAG provides a graph-based comparison without the hybrid passage branch.
 
 \begin{table}[htbp]
 \centering
@@ -531,22 +531,19 @@ The study compares the five configurations in Table~\ref{tab:sequence}. Each com
 \toprule
 Order & Configuration & Evidence path\\
 \midrule
-1 & Naive & BM25 over corpus chunks.\\
-2 & Advanced & One BGE-M3 dense query against Qdrant.\\
-3 & Hybrid (baseline) & Dense and learned sparse retrieval, rank fusion and optional reranking.\\
-4 & Table-aware & Hybrid retrieval over an index whose tables are stored as a prose summary plus the original HTML table in one chunk.\\
-5 & Graph RAG & Table-aware hybrid retrieval fused via alias-aware RRF and cross-encoder reranking with dual-level knowledge-graph retrieval (Neo4j and Qdrant), supplemented by a structured entity-relationship context block.\\
+1 & Naive (BM25) & Lexical BM25 over the raw corpus chunks.\\
+2 & Advanced (dense) & One BGE-M3 dense query against the raw Qdrant index.\\
+3 & Hybrid (baseline) & BGE-M3 dense and learned sparse retrieval over the raw index, with reciprocal rank fusion and cross-encoder reranking.\\
+4 & Table-aware & Hybrid retrieval over the consolidated table index. A table payload includes the prose summary and the original merged table when a summary is available.\\
+5 & Standalone LightRAG & LightRAG passage retrieval and a structured entity--relationship context block.\\
+6 & Table-aware + LightRAG & Table-aware hybrid retrieval fused via alias-aware RRF and cross-encoder reranking with dual-level knowledge-graph retrieval (Neo4j and Qdrant), supplemented by a structured entity-relationship context block.\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-For retrieval, Hit@$k$ indicates whether at least one labeled relevant chunk was retrieved by rank \(k\). Recall@$k$ measures the proportion of labeled evidence recovered and Precision@$k$ measures the proportion of the first \(k\) positions occupied by labeled evidence. Mean reciprocal rank rewards early retrieval of the first labeled source. Normalized discounted cumulative gain rewards placing labeled sources near the top. Alternative supporting chunks can receive no credit when the gold evidence is incomplete. Report scoring coverage and the number of rankings shorter than each cutoff.
-
-The evaluation code also supports mean average precision at a cutoff and LLM-judged answer relevancy and faithfulness, contextual relevancy, precision and recall, and a default-enabled GEval Correctness metric against the reference answer. Citation analysis should distinguish citation validity from claim support, and failure analysis should assess whether refusals and partial answers match the evidence available. The source ODT identifies user testing as an evaluation objective.
-\pending{Provide the final run manifest with code revision, index revision, checkpoint identifiers, prompts, judge settings, hardware, retrieval and context budgets, inclusion and exclusion rules, and significance or uncertainty procedure if used. Supply the human review and user-testing protocols and completed results if available.}
 
 \subsection{Results}
-The committed DeepEval reports contain end-to-end answer-quality scores for Hybrid, Table-aware, and Table-aware + LightRAG on the 300-query benchmark. The retrieval-only ablation results are reported separately in Section~\ref{sec:ir-ablation}; those scores use the corrected 300-query benchmark and rank-preserving aliases for consolidated tables. In the DeepEval reports, answer-quality metrics cover all 300 queries, while retrieval metrics cover the 288 queries with labeled supporting chunks (the 12 unanswerable items are excluded). Table~\ref{tab:rag-quality} summarizes the reported answer-quality measures. The committed result summaries do not report citation-support scores or end-to-end retrieval-plus-generation latency, so neither is inferred here. Comparable end-to-end DeepEval reports for Naive (BM25) and Advanced (dense-only) were not present in the committed evaluation artifacts.
+Table~\ref{tab:rag-quality} summarizes the four end-to-end runs. Table-aware + LightRAG has the highest mean answer relevancy (0.7819), contextual precision (0.5762), contextual recall (0.5753), and Jev correctness (0.6360). Hybrid has the highest faithfulness (0.7247), and Table-aware has the highest contextual relevancy (0.3668). Standalone LightRAG has the lowest mean on all six metrics shown. The increase in mean correctness from Table-aware to Table-aware + LightRAG is 0.0084, alongside a decrease in faithfulness from 0.7071 to 0.6777. The reports provide no uncertainty estimates for these differences.
 
 \begin{table}[htbp]
 \centering
@@ -555,112 +552,121 @@ The committed DeepEval reports contain end-to-end answer-quality scores for Hybr
 \small
 \begin{tabularx}{\linewidth}{l*{6}{>{\centering\arraybackslash}X}}
 \toprule
-Configuration & $n$ & Answer relevancy & Faithfulness & Contextual precision & Contextual recall & Jev correctness\\
+Configuration & Answer relevancy & Faithfulness & Contextual relevancy & Contextual precision & Contextual recall & Jev correctness\\
 \midrule
-Hybrid (baseline) & 300 & 0.7716 & 0.7247 & 0.5619 & 0.5443 & 0.6325\\
-Table-aware & 300 & 0.7724 & 0.7071 & 0.5743 & 0.5682 & 0.6276\\
-Graph RAG (Table-aware + LightRAG) & 300 & 0.7819 & 0.6777 & 0.5762 & 0.5753 & 0.6360\\
+Hybrid & 0.7716 & 0.7247 & 0.3535 & 0.5619 & 0.5443 & 0.6325 \\
+Table-aware & 0.7724 & 0.7071 & 0.3668 & 0.5743 & 0.5682 & 0.6276 \\
+Standalone LightRAG & 0.7461 & 0.6708 & 0.1838 & 0.4164 & 0.3596 & 0.5450 \\
+Table-aware + LightRAG & 0.7819 & 0.6777 & 0.2476 & 0.5762 & 0.5753 & 0.6360 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Across the three reported runs, Graph RAG has the highest mean answer relevancy ($0.7819$), contextual precision ($0.5762$), contextual recall ($0.5753$), and Jev correctness ($0.6360$). Hybrid has the highest faithfulness score ($0.7247$); the corresponding Table-aware and Graph RAG scores are $0.7071$ and $0.6777$. These are descriptive differences between the committed runs, without a reported uncertainty or significance analysis. The reports also give a \texttt{refusal\_correctness} score of $0.6067$ for Hybrid, $0.5300$ for Table-aware, and $0.5633$ for Graph RAG across the full benchmark; this judge score is not the same as an explicit refusal rate.
-
-Table~\ref{tab:rag-slices} reports answer-quality scores by reasoning complexity. Each row uses the slice count shown; retrieval scores by complexity are presented in Table~\ref{tab:ir-complexity}. Graph RAG has the highest reported answer relevancy for multi-hop and table-reasoning questions; Hybrid scores slightly higher for single-hop questions. Graph RAG faithfulness is lower than Hybrid in all three slices, while its Jev correctness is slightly lower for multi-hop questions and higher for single-hop and table-reasoning questions.
+The relative ordering varies by question type (Table~\ref{tab:rag-slices}). Adding LightRAG to Table-aware raises table-reasoning correctness from 0.6329 to 0.6501, the highest score in that slice. On multi-hop questions, the combined system scores 0.5527, between Table-aware (0.5485) and Hybrid (0.5635). On single-hop questions, Hybrid leads in all three measures shown. Its faithfulness is also highest in the other two slices.
 
 \begin{table}[htbp]
 \centering
 \caption{End-to-end answer-quality scores by reasoning complexity.}
 \label{tab:rag-slices}
 \small
-\begin{tabularx}{\linewidth}{llrrr}
+\begin{tabularx}{\linewidth}{ll*{3}{>{\centering\arraybackslash}X}}
 \toprule
 Configuration & Slice ($n$) & Answer relevancy & Faithfulness & Jev correctness\\
 \midrule
-Hybrid & Single-hop (150) & 0.8002 & 0.7506 & 0.6936\\
-Hybrid & Multi-hop (90) & 0.7686 & 0.7045 & 0.5635\\
-Hybrid & Table reasoning (60) & 0.7048 & 0.6904 & 0.5831\\
-Table-aware & Single-hop (150) & 0.7914 & 0.7248 & 0.6730\\
-Table-aware & Multi-hop (90) & 0.7722 & 0.6910 & 0.5485\\
-Table-aware & Table reasoning (60) & 0.7252 & 0.6869 & 0.6329\\
-Graph RAG & Single-hop (150) & 0.7986 & 0.7032 & 0.6803\\
-Graph RAG & Multi-hop (90) & 0.7845 & 0.6350 & 0.5527\\
-Graph RAG & Table reasoning (60) & 0.7362 & 0.6778 & 0.6501\\
+Hybrid & Single-hop (150) & 0.8002 & 0.7506 & 0.6936 \\
+Hybrid & Multi-hop (90) & 0.7686 & 0.7045 & 0.5635 \\
+Hybrid & Table reasoning (60) & 0.7048 & 0.6904 & 0.5831 \\
+Table-aware & Single-hop (150) & 0.7914 & 0.7248 & 0.6730 \\
+Table-aware & Multi-hop (90) & 0.7722 & 0.6910 & 0.5485 \\
+Table-aware & Table reasoning (60) & 0.7252 & 0.6869 & 0.6329 \\
+Standalone LightRAG & Single-hop (150) & 0.7671 & 0.6963 & 0.5927 \\
+Standalone LightRAG & Multi-hop (90) & 0.7582 & 0.6713 & 0.5211 \\
+Standalone LightRAG & Table reasoning (60) & 0.6756 & 0.6064 & 0.4615 \\
+Table-aware + LightRAG & Single-hop (150) & 0.7986 & 0.7032 & 0.6803 \\
+Table-aware + LightRAG & Multi-hop (90) & 0.7845 & 0.6350 & 0.5527 \\
+Table-aware + LightRAG & Table reasoning (60) & 0.7362 & 0.6778 & 0.6501 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-On the separate 100-query auxiliary unanswerable set, Hybrid scored $0.5900$ and Graph RAG scored $0.7000$ on \texttt{refusal\_correctness}; their mean Jev correctness scores were $0.7355$ and $0.7290$, respectively. These results indicate that the higher refusal-correctness score for Graph RAG was accompanied by a slightly lower mean correctness score on this auxiliary set. The committed Table-aware + LightRAG report supplies the Graph RAG result; the available Hybrid report supplies its baseline.
+\paragraph{Abstention and citation diagnostics.}
+On the full benchmark, mean refusal correctness is 0.6067 for Hybrid, 0.5300 for Table-aware, 0.4633 for standalone LightRAG, and 0.5633 for Table-aware + LightRAG. On the auxiliary set, the detector flags 59 of 100 Hybrid responses and 70 of 100 Table-aware + LightRAG responses. Since every auxiliary query is labeled unanswerable, these are also the counts of correct refusal flags. Mean Jev correctness is 0.7355 and 0.7290, respectively. The detector can flag partial answers, so these counts cannot establish how many responses abstain completely or avoid unsupported advice.
+
+The saved main-benchmark outputs contain 833 valid and 22 invalid citation identifiers for Hybrid and 893 valid and 21 invalid identifiers for Table-aware + LightRAG, counting each identifier once per answer. The combined system receives a graph block on all 300 items and cites it on 80 (26.7\%). These 80 mentions contribute to the valid-identifier total. Validity here means the identifier was present in the supplied context. Claim-level citation support was not systematically scored. The recorded timer starts after retrieval, so the exports provide no measure of retrieval-plus-generation latency or the cost of adding graph traversal.
 
 \subsection{Retrieval Ablation Study}
 \label{sec:ir-ablation}
-We evaluate five retrieval configurations on the 300-query benchmark under binary relevance against ground-truth chunk identifiers at a final documentary cutoff of $k=5$. All configurations evaluate the exact same 300 queries with zero exclusions. Naive applies lexical BM25 over the raw chunk corpus ($1,744$ chunks). Advanced executes a single BGE-M3 dense vector search against Qdrant. Hybrid combines BGE-M3 dense and learned sparse retrieval via weighted reciprocal rank fusion followed by cross-encoder reranking over the raw chunk index. Table-aware applies the same hybrid retrieval and reranking pipeline over the consolidated dual-representation index ($1,492$ points, containing $238$ merged tables paired with Vietnamese prose summaries). Graph RAG fuses candidates from the table-aware hybrid stream with provenance-resolved passages from the LightRAG knowledge graph via alias-aware reciprocal rank fusion before cross-encoder reranking, and appends the structured entity-relationship subgraph context for answer generation.
-
-To ensure fair chunk-level comparison across raw and table-consolidated indexes, deterministic IR evaluation incorporates rank-preserving alias matching: whenever a consolidated table chunk is retrieved at rank $r$, any ground-truth sub-chunk identifier absorbed into that table during index-time merging is credited at rank $r$ without inflating precision denominators. Furthermore, for Graph RAG, the auxiliary knowledge-graph summary block (generated for $297$ of $300$ live retrieval queries and $300$ of $300$ end-to-end generation queries) is excluded from documentary chunk-level IR scoring so that all five methods are evaluated strictly on their top-$5$ documentary passages. Agent RAG is not included in this retrieval-only ablation.
+The overall retrieval comparison in Table~\ref{tab:ir-overall} uses the same 288 reviewed questions with labeled evidence in every row. The four end-to-end runs each supply five documentary IDs per question, with a separate graph block for the two LightRAG configurations. The earlier 300-item retrieval ablation used the pre-review export.
 
 \begin{table}[htbp]
 \centering
-\caption{Overall retrieval metrics on the 300-query benchmark ($k=5$). Best value per column in bold.}
+\caption{Overall documentary retrieval metrics on the 288 reviewed queries with labeled evidence. Best values per column are in bold.}
 \label{tab:ir-overall}
 \small
-\begin{tabularx}{\linewidth}{lXXXXXXX}
+\begin{tabularx}{\linewidth}{l*{7}{>{\centering\arraybackslash}X}}
 \toprule
 Configuration & Hit@1 & Hit@3 & Hit@5 & Recall@5 & MRR@5 & NDCG@5 & MAP@5\\
 \midrule
-Naive (BM25) & 0.2767 & 0.4533 & 0.5367 & 0.4733 & 0.3747 & 0.3773 & 0.3292 \\
-Advanced (dense) & 0.3067 & 0.4767 & 0.5900 & 0.5167 & 0.4064 & 0.4093 & 0.3562 \\
-Hybrid (baseline) & 0.4233 & 0.6767 & 0.7433 & 0.6817 & 0.5532 & 0.5607 & 0.5019 \\
-Table-aware & \textbf{0.4933} & \textbf{0.7300} & \textbf{0.7833} & \textbf{0.7167} & \textbf{0.6114} & \textbf{0.6122} & \textbf{0.5581} \\
-Graph RAG & \textbf{0.4933} & \textbf{0.7300} & \textbf{0.7833} & \textbf{0.7167} & 0.6108 & 0.6115 & 0.5570 \\
+Naive (BM25) & 0.2778 & 0.4618 & 0.5486 & 0.4826 & 0.3799 & 0.3826 & 0.3325 \\
+Advanced (dense) & 0.3090 & 0.4896 & 0.6042 & 0.5278 & 0.4138 & 0.4167 & 0.3615 \\
+Hybrid & 0.4271 & 0.6840 & 0.7535 & 0.6927 & 0.5589 & 0.5680 & 0.5081 \\
+Table-aware & \textbf{0.5000} & \textbf{0.7396} & \textbf{0.7951} & \textbf{0.7292} & \textbf{0.6195} & \textbf{0.6217} & \textbf{0.5666} \\
+Standalone LightRAG & 0.2604 & 0.3958 & 0.4479 & 0.3802 & 0.3262 & 0.3119 & 0.2714 \\
+Table-aware + LightRAG & \textbf{0.5000} & \textbf{0.7396} & \textbf{0.7951} & \textbf{0.7292} & 0.6189 & 0.6212 & 0.5660 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \begin{table}[htbp]
 \centering
-\caption{Hit@5 and MRR@5 stratified by reasoning complexity (60 table-reasoning, 150 single-hop, and 90 multi-hop queries). Best value per column in bold.}
+\caption{Hit@5 and MRR@5 by reasoning complexity among reviewed questions with labeled evidence. Best values per column are in bold.}
 \label{tab:ir-complexity}
 \small
-\begin{tabularx}{\linewidth}{lXXXXXX}
+\begin{tabularx}{\linewidth}{l*{6}{>{\centering\arraybackslash}X}}
 \toprule
  & \multicolumn{3}{c}{Hit@5} & \multicolumn{3}{c}{MRR@5}\\
 \cmidrule(lr){2-4}\cmidrule(lr){5-7}
-Configuration & Table & Single & Multi & Table & Single & Multi\\
+Configuration & Table (59) & Single (144) & Multi (85) & Table (59) & Single (144) & Multi (85)\\
 \midrule
-Naive (BM25) & 0.3000 & 0.6200 & 0.5556 & 0.1775 & 0.4548 & 0.3728 \\
-Advanced (dense) & 0.4000 & 0.6267 & 0.6556 & 0.2189 & 0.4583 & 0.4448 \\
-Hybrid (baseline) & 0.5833 & \textbf{0.8133} & 0.7333 & 0.3044 & \textbf{0.6392} & 0.5756 \\
-Table-aware & \textbf{0.7667} & 0.8067 & \textbf{0.7556} & \textbf{0.5972} & 0.6343 & \textbf{0.5826} \\
-Graph RAG & \textbf{0.7667} & 0.8067 & \textbf{0.7556} & \textbf{0.5972} & 0.6332 & \textbf{0.5826} \\
+Naive (BM25) & 0.3051 & 0.6250 & 0.5882 & 0.1805 & 0.4529 & 0.3947 \\
+Advanced (dense) & 0.4068 & 0.6319 & 0.6941 & 0.2226 & 0.4583 & 0.4710 \\
+Hybrid & 0.5932 & \textbf{0.8194} & 0.7529 & 0.3096 & \textbf{0.6416} & 0.5918 \\
+Table-aware & \textbf{0.7797} & 0.8125 & \textbf{0.7765} & \textbf{0.6073} & 0.6365 & \textbf{0.5992} \\
+Standalone LightRAG & 0.3559 & 0.4306 & 0.5412 & 0.2311 & 0.3087 & 0.4218 \\
+Table-aware + LightRAG & \textbf{0.7797} & 0.8125 & \textbf{0.7765} & \textbf{0.6073} & 0.6353 & \textbf{0.5992} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \paragraph{Comparative analysis of retrieval progression.}
-Tables~\ref{tab:ir-overall} and~\ref{tab:ir-complexity} highlight three principal findings across the five retrieval architectures:
+Tables~\ref{tab:ir-overall} and~\ref{tab:ir-complexity} compare six configurations on the 288 reviewed questions with labeled evidence. The earlier 300-question ablation is a separate experiment and is not combined with these results.
 \begin{enumerate}
-\item \textbf{Hybrid sparse-dense fusion and cross-encoder reranking:} Transitioning from single-vector dense retrieval (Advanced) to the Hybrid baseline yields a $+15.33$ percentage-point gain in overall Hit@5 ($0.5900 \rightarrow 0.7433$) and a $+14.68$ point gain in MRR@5 ($0.4064 \rightarrow 0.5532$). Gains are observed across all complexity strata: $+18.66$ points in Hit@5 on single-hop queries, $+18.33$ points on table-reasoning queries, and $+7.77$ points on multi-hop queries.
-\item \textbf{Table consolidation and dual-representation indexing:} On the 60-query \emph{Table Reasoning} stratum, Table-aware retrieval elevates Hit@1 from $0.1167$ to $0.4667$ ($+35.00$ points), Hit@3 from $0.4667$ to $0.7667$ ($+30.00$ points), Hit@5 from $0.5833$ to $0.7667$ ($+18.34$ points), and MRR@5 from $0.3044$ to $0.5972$ ($+29.28$ points). Notably, scoring the table-consolidated index under strict primary-ID matching without merged sub-chunk alias resolution artificially depresses overall Hit@5 to $0.7233$ ($-2.00$ points below Hybrid), because relevant sub-chunks absorbed into a merged table are counted as misses when returned under the table's primary chunk identifier. Restoring rank-preserving alias resolution confirms that Table-aware improves overall Hit@1 by $+7.00$ points ($0.4233 \rightarrow 0.4933$) and overall Hit@5 by $+4.00$ points ($0.7433 \rightarrow 0.7833$) over Hybrid, while also lifting multi-hop Hit@5 from $0.7333$ to $0.7556$ ($+2.23$ points). Gains are particularly pronounced on clinical-style queries ($n=120$), where Hit@1 rises by $+10.00$ points ($0.4083 \rightarrow 0.5083$) and Hit@5 by $+6.66$ points ($0.7417 \rightarrow 0.8083$).
-\item \textbf{Rank stability under Graph RAG passage fusion:} Incorporating provenance-resolved passages from the knowledge graph into the candidate pool prior to cross-encoder reranking produces identical binary coverage metrics to Table-aware across every cutoff and complexity stratum ($\text{Hit@1} = 0.4933$, $\text{Hit@3} = 0.7300$, $\text{Hit@5} = 0.7833$, $\text{Recall@5} = 0.7167$, and $\text{Precision@5} = 0.1753$). A query-by-query comparison shows that cross-branch RRF alters the final top-$5$ documentary ranking order in only $9$ of the $300$ benchmark queries ($3.0\%$: $4$ single-hop, $3$ multi-hop, and $2$ table-reasoning queries). Because both the passage index and the knowledge-graph vector collections share the same BGE-M3 embedding space and all fused candidates are re-scored by the same cross-encoder reranker, the top-$30$ hybrid candidate pool already captures the high-affinity documentary chunks, leaving only minor rank-order swaps (shifting overall MRR@5 from $0.6114$ to $0.6108$ and NDCG@5 from $0.6122$ to $0.6115$).
+\item \textbf{Hybrid retrieval improves on dense retrieval:} Hit@5 rises from $0.6042$ with Advanced dense retrieval to $0.7535$ with Hybrid, a gain of $14.93$ percentage points. MRR@5 rises from $0.4138$ to $0.5589$ ($+14.51$ points). Hit@5 also rises in each reported complexity group: by $18.75$ points for single-hop questions, $18.64$ points for table reasoning, and $5.88$ points for multi-hop questions.
+\item \textbf{Table-aware indexing improves overall and table-reasoning retrieval:} Relative to Hybrid, Table-aware raises overall Hit@1 from $0.4271$ to $0.5000$ ($+7.29$ points), Hit@5 from $0.7535$ to $0.7951$ ($+4.16$ points), and MRR@5 from $0.5589$ to $0.6195$ ($+6.06$ points). In the reviewed table-reasoning group ($n=59$), Hit@5 rises from $0.5932$ to $0.7797$ ($+18.65$ points) and MRR@5 from $0.3096$ to $0.6073$ ($+29.77$ points). The improvement is not uniform across groups: single-hop Hit@5 changes from $0.8194$ to $0.8125$, while multi-hop Hit@5 rises from $0.7529$ to $0.7765$. The separate 300-question ablation also found that rank-preserving alias matching mattered when merged tables were scored against sub-chunk labels; those figures are reported separately in the ablation results and should not be read as results from the 288-question tables.
+\item \textbf{Graph passage fusion leaves binary coverage unchanged:} Table-aware and Table-aware + LightRAG have the same overall Hit@1 ($0.5000$), Hit@3 ($0.7396$), and Hit@5 ($0.7951$), and the same Hit@5 in each reported complexity group. Their ranking metrics differ only slightly: MRR@5 is $0.6195$ versus $0.6189$, and NDCG@5 is $0.6217$ versus $0.6212$, respectively. These results show no additional binary-coverage gain from graph passage fusion on this reviewed set; the separate structured graph context is evaluated at answer generation below.
 \end{enumerate}
 
 \paragraph{Impact of knowledge-graph context on answer synthesis and abstention.}
-Because top-$5$ passage retrieval is already saturated after table-aware consolidation and cross-encoder reranking, the primary contribution of Graph RAG operates at the generation stage through the structured entity-relationship context block appended to the prompt. Across comparative end-to-end generation experiments evaluated with Qwen3.8-27B on the 300-query main benchmark and the 100-query auxiliary unanswerable benchmark:
+The retrieval comparison shows no binary-coverage difference between Table-aware and Table-aware + LightRAG on the reviewed set. The saved generation outputs provide evidence about how the graph context was used, but do not establish that it improved answer quality. The main generation benchmark contains 300 queries; retrieval metrics above use 288 reviewed queries with labeled evidence.
 \begin{itemize}
-\item \textbf{Multi-source synthesis and explicit graph attribution:} On the 300-query benchmark, the knowledge-graph branch supplies a non-empty structured entity-relationship block for $100\%$ of queries ($300/300$). The generator produces $827$ valid inline citations ($2.76$ valid citations per response) compared to $847$ valid citations in the Hybrid baseline, and explicitly cites the knowledge-graph context alongside documentary chunk identifiers in $71$ of the $300$ responses ($23.7\%$) to consolidate cross-section entity attributes and relational constraints.
-\item \textbf{Abstention robustness and latency trade-off:} On the 100-query auxiliary unanswerable set, Graph RAG achieves an explicit clinical refusal rate of $58.0\%$ ($58/100$), matching the Hybrid baseline ($59.0\%$, $59/100$). This equivalence demonstrates that providing a curated relational subgraph does not induce spurious compliance on out-of-scope clinical symptoms. Conversely, executing LLM-based query keyword extraction and dual Neo4j/Qdrant traversal increases mean end-to-end response latency on the 300-query benchmark from $42.33\,\text{s}$ per query under Hybrid to $65.40\,\text{s}$ per query under Graph RAG.
+\item \textbf{Graph context and citations:} A graph context block was present for all 300 queries. The saved answers contain 893 valid citation identifiers for Table-aware + LightRAG and 833 for Hybrid, counting each identifier once per answer; validity means that the identifier appeared in the supplied context. The answers cite the graph context in 80 of 300 responses ($26.7\%$). This count records graph mentions, not whether the cited graph information supports the associated claims.
+\item \textbf{Refusal flags and timing:} On the 100-query auxiliary unanswerable set, the saved refusal detector correctly flags 70 responses for Table-aware + LightRAG and 59 for Hybrid. These are detector results and do not show whether the answers abstain completely. The saved latency values also cannot support an end-to-end comparison: the generator's timer starts after retrieval, so it excludes query planning and retrieval, including graph traversal.
 \end{itemize}
 
 \subsection{Qualitative Assessment of Vietnamese Vaccine Answers}
-A qualitative assessment should trace the question to the ranked evidence and examine the generated response claim by claim. For product-specific questions, check whether the passage refers to the right product and formulation. For tables, check whether the evidence includes the relevant headers and any qualifying notes. For evidence distributed across sources, check whether all required passages appear and whether the answer combines them consistently. A partially answerable case should show which parts the source supports and how the response handles the remaining uncertainty.
+The following examples trace saved Table-aware + LightRAG responses to the reviewed benchmark and the evidence supplied to the generator. They illustrate the behavior of the metrics and are independent of the expert review of benchmark labels.
 
-\pending{Insert reviewed examples with query IDs, variant, source titles and chunk IDs, source excerpts, actual output and assessor judgments. Include a supported answer, an evidence miss or unsupported claim, a table-dependent example and a partially answerable case. Supply reviewed Graph RAG examples once the corresponding runs are available.}
+\begin{description}
+\item[Invalid source ID.] For \artifact{eval_0001}, the model cites the labeled Abrysvo passage and another supplied passage. It also cites \artifact{abrysvo_540310322125_c_0004}, which is absent from the retrieved list and marked invalid. A retrieval hit can therefore coexist with an invalid citation in the answer.
+\item[Table interpretation.] For \artifact{eval_0194}, the model retrieves and cites the labeled Influvac Tetra table. It calls the values comparable to or higher than the comparator values, although its own transcription includes lower point estimates and it gives no equivalence criterion. It also speculates that an anomalous interval is a printing error. The extracted text alone cannot establish where the anomaly arose.
+\item[Partial answer and evidence mismatch.] For \artifact{eval_0238}, the model answers the schedule component and abstains on the interaction questions. It cites two supplied Shingrix passages. The benchmark's labeled chunk is absent from the five passages, and the lexical detector flags the response. This example illustrates why a binary refusal flag cannot distinguish partial abstention from a complete refusal.
+\end{description}
 
 \section{Conclusion}
 \label{sec:conclusion}
 This study presented VaxiS, an evidence-grounded retrieval-augmented generation system designed for Vietnamese vaccine information lookup over official regulatory leaflets published by the Drug Administration of Vietnam. By combining hierarchical Markdown parsing, recursive character splitting across descending structural delimiters ($\texttt{\textbackslash n\textbackslash n} \rightarrow \texttt{\textbackslash n} \rightarrow \texttt{.} \rightarrow \text{whitespace}$), and row-preserving table partitioning, the indexing pipeline transforms 75 heterogeneous vaccine package inserts into a traceable corpus of 1,744 raw chunks and 1,492 table-consolidated units. To support rigorous evaluation across realistic clinical scenarios, we constructed a 300-query Vietnamese benchmark stratified orthogonally across answerability, reasoning complexity (single-hop, intra-document and cross-vaccine multi-hop, and table reasoning), and user query style, complemented by a 100-query auxiliary unanswerable set and a three-expert clinical audit protocol (435 review turns).
 
-Comparative experiments across five retrieval configurations (Tables~\ref{tab:ir-overall} and~\ref{tab:ir-complexity}) establish three core empirical conclusions. First, combining BGE-M3 dense and learned sparse representations via reciprocal rank fusion and cross-encoder reranking (Hybrid) substantially outperforms both lexical BM25 (Naive) and single-vector dense retrieval (Advanced), lifting overall Hit@5 from $0.5367$ and $0.5900$ to $0.7433$ and MRR@5 from $0.3747$ and $0.4064$ to $0.5532$. Second, consolidating fragmented sub-chunk tables and indexing dual prose-plus-HTML representations (Table-aware) resolves a major retrieval bottleneck on tabular clinical data, elevating table-reasoning Hit@1 by $+35.00$ percentage points ($0.1167 \rightarrow 0.4667$) and overall Hit@5 to $0.7833$ under rank-preserving sub-chunk alias matching. Third, augmenting the table-aware hybrid pipeline with a domain-specific biomedical knowledge graph of 3,572 entity vertices and 1,830 directed relationships (Graph RAG) preserves top-$5$ documentary retrieval precision ($\text{Hit@5} = 0.7833$) while supplying a structured entity-relationship subgraph context that the generator actively cites in $23.7\%$ of benchmark responses ($71/300$) and maintaining a $58.0\%$ clinical refusal rate on out-of-scope consumer queries.
+Comparative experiments across six retrieval configurations (Tables~\ref{tab:ir-overall} and~\ref{tab:ir-complexity}) establish three core empirical conclusions. First, combining BGE-M3 dense and learned sparse representations via reciprocal rank fusion and cross-encoder reranking (Hybrid) substantially outperforms both lexical BM25 (Naive) and single-vector dense retrieval (Advanced), lifting overall Hit@5 from $0.5486$ and $0.6042$ to $0.7535$ and MRR@5 from $0.3799$ and $0.4138$ to $0.5589$. Second, consolidating fragmented sub-chunk tables and indexing dual prose-plus-HTML representations (Table-aware) resolves a major retrieval bottleneck on tabular clinical data, elevating table-reasoning Hit@1 by $+35.60$ percentage points ($0.1186 \rightarrow 0.4746$) and overall Hit@5 to $0.7951$ under rank-preserving sub-chunk alias matching. Third, augmenting the table-aware hybrid pipeline with a domain-specific biomedical knowledge graph of 3,572 entity vertices and 1,830 directed relationships (Graph RAG) preserves top-$5$ documentary retrieval precision ($\text{Hit@5} = 0.7951$) while supplying a structured entity-relationship subgraph context that the generator actively cites in $26.7\%$ of benchmark responses ($80/300$) and maintaining a $70.0\%$ clinical refusal rate on out-of-scope consumer queries.
 
 Several limitations delimit the scope of our findings. The evaluated corpus is restricted to 75 regulatory usage leaflets registered in Vietnam and does not encompass individualized patient medical records, clinical diagnosis, or real-time epidemiological surveillance. Moreover, dual-level knowledge-graph traversal introduces an end-to-end latency overhead ($65.40\,\text{s}$ vs.\ $42.33\,\text{s}$ per query under Hybrid), motivating future work on selective query routing and agentic tool orchestration (Agent RAG) so that graph traversal and multi-step decomposition are invoked adaptively only on complex multi-hop clinical inquiries.
 
