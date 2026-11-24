@@ -687,6 +687,108 @@ Several limitations delimit the scope of our findings. The evaluated corpus is r
 % Appendix material: prompts, schemas, and reproducibility configs
 % (Pseudocode stages intentionally omitted.)
 % ------------------------------------------------------------------
+\subsection{Experiment Reproduction Protocol}
+\label{app:experiment_protocol}
+The commands below use the reviewed benchmark named in Section~\ref{sec:experiments}. Each run writes to its own result path. The first two commands produce retrieval-only reports; the next four produce saved generation outputs.
+
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,breaklines=true,columns=fullflexible]
+uv run vacxis-eval --retrieval-only --baseline \
+  --dataset review-web/test_dataset_verified.json --top-k 5 \
+  --chunks chunks_storage/chunks.parquet \
+  --out-json evaluation/naive/retrieval.json \
+  --out-md evaluation/naive/retrieval.md
+
+uv run vacxis-eval --retrieval-only --advanced-rag \
+  --dataset review-web/test_dataset_verified.json --top-k 5 \
+  --collection-name VacxiS_Capstone_FA26 \
+  --out-json evaluation/advanced/retrieval.json \
+  --out-md evaluation/advanced/retrieval.md
+
+uv run vacxis-generation --input-file review-web/test_dataset_verified.json \
+  --dataset-format deepeval --model qwen/qwen3.8-27b \
+  --retriever-mode hybrid --collection-name VacxiS_Capstone_FA26 \
+  --top-k 5 --out-file generation/hybrid/result.json
+
+uv run vacxis-generation --input-file review-web/test_dataset_verified.json \
+  --dataset-format deepeval --model qwen/qwen3.8-27b \
+  --retriever-mode hybrid \
+  --collection-name VacxiS_Capstone_FA26_table_dual \
+  --top-k 5 --out-file generation/table_aware/result.json
+
+uv run vacxis-generation --input-file review-web/test_dataset_verified.json \
+  --dataset-format deepeval --model qwen/qwen3.8-27b \
+  --retriever-mode lightrag --collection-name VacxiS_Capstone_FA26 \
+  --lightrag-mode hybrid --lightrag-working-dir lightrag_storage \
+  --lightrag-workspace vacxis --lightrag-chunk-top-k 5 \
+  --top-k 5 --out-file generation/lightrag/result.json
+
+uv run vacxis-generation --input-file review-web/test_dataset_verified.json \
+  --dataset-format deepeval --model qwen/qwen3.8-27b \
+  --retriever-mode hybrid_lightrag \
+  --collection-name VacxiS_Capstone_FA26_table_dual \
+  --lightrag-mode hybrid --lightrag-fusion rrf_rerank \
+  --lightrag-working-dir lightrag_storage --lightrag-workspace vacxis \
+  --lightrag-chunk-top-k 5 --top-k 5 \
+  --out-file generation/table_aware_lightrag/result.json
+\end{lstlisting}
+
+Score each saved generation output against the same benchmark using the result and report paths shown below. The commands use the same Jev model and chunk corpus for all four configurations.
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,breaklines=true,columns=fullflexible]
+uv run vacxis-eval --dataset review-web/test_dataset_verified.json \
+  --results generation/hybrid/result.json \
+  --chunks chunks_storage/chunks.parquet --jev-model typesafe/jev-1.14 \
+  --out-json evaluation/hybrid/result.json \
+  --out-md evaluation/hybrid/result.md
+
+uv run vacxis-eval --dataset review-web/test_dataset_verified.json \
+  --results generation/table_aware/result.json \
+  --chunks chunks_storage/chunks.parquet --jev-model typesafe/jev-1.14 \
+  --out-json evaluation/table_aware/result.json \
+  --out-md evaluation/table_aware/result.md
+
+uv run vacxis-eval --dataset review-web/test_dataset_verified.json \
+  --results generation/lightrag/result.json \
+  --chunks chunks_storage/chunks.parquet --jev-model typesafe/jev-1.14 \
+  --out-json evaluation/lightrag/result.json \
+  --out-md evaluation/lightrag/result.md
+
+uv run vacxis-eval --dataset review-web/test_dataset_verified.json \
+  --results generation/table_aware_lightrag/result.json \
+  --chunks chunks_storage/chunks.parquet --jev-model typesafe/jev-1.14 \
+  --out-json evaluation/table_aware_lightrag/result.json \
+  --out-md evaluation/table_aware_lightrag/result.md
+\end{lstlisting}
+
+Retrieval-only reports exclude questions without labeled source chunks, leaving 288 questions for the IR averages.
+
+The auxiliary unanswerable-set runs use the same Hybrid and Table-aware + LightRAG settings, replacing the benchmark with \artifact{unanswerable\_eval\_dataset.json}. The generation outputs and evaluation reports are saved separately from the 300-question benchmark results.
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,breaklines=true,columns=fullflexible]
+uv run vacxis-generation --input-file unanswerable_eval_dataset.json \
+  --dataset-format deepeval --model qwen/qwen3.8-27b \
+  --retriever-mode hybrid --collection-name VacxiS_Capstone_FA26 \
+  --top-k 5 --out-file generation/hybrid/unanswerable.json
+
+uv run vacxis-generation --input-file unanswerable_eval_dataset.json \
+  --dataset-format deepeval --model qwen/qwen3.8-27b \
+  --retriever-mode hybrid_lightrag \
+  --collection-name VacxiS_Capstone_FA26_table_dual \
+  --lightrag-mode hybrid --lightrag-fusion rrf_rerank \
+  --lightrag-working-dir lightrag_storage --lightrag-workspace vacxis \
+  --lightrag-chunk-top-k 5 --top-k 5 \
+  --out-file generation/table_aware_lightrag/unanswerable.json
+
+uv run vacxis-eval --skip-unanswerable --dataset unanswerable_eval_dataset.json \
+  --results generation/hybrid/unanswerable.json \
+  --chunks chunks_storage/chunks.parquet --jev-model typesafe/jev-1.14 \
+  --out-json evaluation/hybrid/unanswerable.json \
+  --out-md evaluation/hybrid/unanswerable.md
+
+uv run vacxis-eval --skip-unanswerable --dataset unanswerable_eval_dataset.json \
+  --results generation/table_aware_lightrag/unanswerable.json \
+  --chunks chunks_storage/chunks.parquet --jev-model typesafe/jev-1.14 \
+  --out-json evaluation/table_aware_lightrag/unanswerable.json \
+  --out-md evaluation/table_aware_lightrag/unanswerable.md
+\end{lstlisting}
 %\lstset{
 %    basicstyle=\ttfamily\footnotesize,
 %    breaklines=true,
@@ -741,7 +843,7 @@ $\langle\text{Passage text, dual prose-plus-HTML table, or structured knowledge-
 
 \textbf{4. Serialized Generation Output Record Schema:}
 \begin{quote}
-\texttt{query} (original Vietnamese question), \texttt{answer} (generated Vietnamese response with inline \texttt{[CHUNK\_ID]} citations), \texttt{citations} (validated chunk IDs present in retrieved context), \texttt{invalid\_citations} (hallucinated bracketed IDs outside retrieved context), \texttt{cited\_chunk\_ids}, \texttt{retrieved\_chunk\_ids}, \texttt{retrieved\_contexts}, \texttt{is\_refusal} (boolean abstention flag), \texttt{model}, \texttt{latency\_seconds}, and \texttt{usage} (\texttt{prompt\_tokens}, \texttt{completion\_tokens}, \texttt{total\_tokens}).
+\texttt{query} (original Vietnamese question), \texttt{answer} (generated Vietnamese response with inline \texttt{[CHUNK\_ID]} citations), \texttt{citations} (IDs present in retrieved context), \texttt{invalid\_citations} (bracketed IDs absent from retrieved context), \texttt{cited\_chunk\_ids}, \texttt{retrieved\_chunk\_ids}, \texttt{retrieved\_contexts}, \texttt{is\_refusal} (boolean lexical-trigger flag), \texttt{model}, \texttt{latency\_seconds} (serialized generation field; not analyzed in this study), and \texttt{usage} (\texttt{prompt\_tokens}, \texttt{completion\_tokens}, \texttt{total\_tokens}).
 \end{quote}
 \end{tcolorbox}
 
@@ -749,7 +851,7 @@ $\langle\text{Passage text, dual prose-plus-HTML table, or structured knowledge-
 \label{app:graph_schema}
 The vaccine knowledge graph enforces a twelve-class biomedical ontology tailored to Vietnamese regulatory package inserts. During extraction, the language model classifies each identified clinical concept into one of twelve canonical types—\emph{Vaccine}, \emph{Ingredient}, \emph{Pathogen}, \emph{Indication}, \emph{Contraindication}, \emph{Adverse\_Reaction}, \emph{Clinical\_Outcome}, \emph{Target\_Population}, \emph{Dosage\_And\_Route}, \emph{Precaution}, \emph{Drug\_Interaction}, or \emph{Storage\_Condition} (defaulting to \emph{Other} when a concept falls outside these categories)—and emits structured JSON objects containing typed entity descriptions and directed relational triplets (Listing~\ref{lst:vax-entity-ontology}).
 
-\begin{lstlisting}[caption={Biomedical entity ontology and JSON output schema used for vaccine knowledge-graph extraction.},label={lst:vax-entity-ontology}]
+\begin{lstlisting}[language=json,caption={Biomedical entity ontology and JSON output schema used for vaccine knowledge-graph extraction.},label={lst:vax-entity-ontology}]
 Entity Ontology Categories (12 Clinical Classes):
   - Vaccine: Commercial product names and proprietary vaccine formulations.
   - Ingredient: Active antigens, toxoids, viral/bacterial strains, adjuvants (e.g., AS01B, aluminum hydroxide), excipients, and manufacturing residues.
